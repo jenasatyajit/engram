@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="180 240 880 700" width="880" height="700">
+  <title>Chanakya mascot</title>
+
+  <!-- Palette (single source of truth: change here, everything follows) -->
+  <defs>
+    <clipPath id="clipL"><circle cx="0" cy="0" r="62"/></clipPath>
+    <clipPath id="clipR"><circle cx="0" cy="0" r="62"/></clipPath>
+  </defs>
+
+  <g id="rig">
+    <!-- Hair: the long braid-like lock swinging behind the head -->
+    <g id="hair">
+      <path fill="#55301b" d="M 690 300 C 600 300 500 345 440 430 C 410 475 392 515 385 545
+        C 382 560 372 568 360 575 C 320 605 292 650 292 700 C 292 725 300 740 298 748
+        C 296 765 270 770 255 795 C 235 825 240 880 285 912 C 280 890 300 855 335 858
+        C 370 862 395 878 440 870 C 470 862 485 845 495 832 L 560 700 Z"/>
+    </g>
+
+    <!-- Ears (sit behind the head) -->
+    <circle id="earL" cx="418" cy="692" r="62" fill="#fcc091"/>
+    <circle id="earR" cx="945" cy="688" r="62" fill="#fcc091"/>
+
+    <!-- Head -->
+    <path id="head" fill="#fcc091" d="M 685 300 C 830 300 940 410 940 590 C 940 760 840 897 685 897
+      C 540 897 428 780 428 590 C 428 410 540 300 685 300 Z"/>
+
+    <!-- Earrings -->
+    <path id="earringL" fill="none" stroke="#ffb800" stroke-width="18" stroke-linecap="round"
+          d="M 421 750 A 30 30 0 1 0 445 746"/>
+    <path id="earringR" fill="none" stroke="#ffb800" stroke-width="18" stroke-linecap="round"
+          d="M 919 746 A 30 30 0 1 0 943 750"/>
+
+    <!-- Tilaka (Vaishnava U mark) -->
+    <path id="tilaka" fill="#dc4410" d="M 646 435 C 632 470 628 520 640 555 C 650 585 675 598 690 598
+      C 705 598 730 585 740 555 C 752 520 746 470 734 435 C 736 480 731 512 722 534
+      C 715 549 705 552 690 552 C 675 552 665 549 658 534 C 649 512 644 480 646 435 Z"/>
+
+    <!-- Face -->
+    <g id="face">
+      <g id="eyeL" transform="translate(581 688)">
+        <circle id="eyeL-white" r="62" fill="#fff3e6"/>
+        <g clip-path="url(#clipL)"><circle id="eyeL-pupil" cx="1" cy="-2" r="44" fill="#55301b"/></g>
+      </g>
+      <g id="eyeR" transform="translate(792 686)">
+        <circle id="eyeR-white" r="62" fill="#fff3e6"/>
+        <g clip-path="url(#clipR)"><circle id="eyeR-pupil" cx="-2" cy="-2" r="44" fill="#55301b"/></g>
+      </g>
+
+      <g id="browL" transform="translate(586 636) rotate(20)">
+        <path d="M -46 0 Q 0 -10 46 0" fill="none" stroke="#55301b" stroke-width="31" stroke-linecap="round"/>
+      </g>
+      <g id="browR" transform="translate(789 638) rotate(-20)">
+        <path d="M -46 0 Q 0 -10 46 0" fill="none" stroke="#55301b" stroke-width="31" stroke-linecap="round"/>
+      </g>
+
+      <g id="mouth" transform="translate(690 756)">
+        <path d="M -33 -6 Q 0 22 33 -6 Q 0 22 -33 -6 Z" fill="#55301b" stroke="#55301b"
+              stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+      </g>
+    </g>
+  </g>
+</svg>
