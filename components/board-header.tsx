@@ -19,6 +19,8 @@ type BoardHeaderProps = {
   onModeChange: (mode: Mode) => void
   aiEnabled: boolean
   onAiEnabledChange: (enabled: boolean) => void
+  graphOpen: boolean
+  onToggleGraph: () => void
 }
 
 export function BoardHeader({
@@ -26,6 +28,8 @@ export function BoardHeader({
   onModeChange,
   aiEnabled,
   onAiEnabledChange,
+  graphOpen,
+  onToggleGraph,
 }: BoardHeaderProps) {
   return (
     <header className="flex h-[78px] shrink-0 items-center justify-end bg-background px-8">
@@ -69,8 +73,10 @@ export function BoardHeader({
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="View graph"
-                className="size-10 text-foreground"
+                aria-label={graphOpen ? "Back to writing" : "View graph"}
+                aria-pressed={graphOpen}
+                onClick={onToggleGraph}
+                className="size-10 text-foreground aria-pressed:bg-muted"
               />
             }
           >
@@ -80,7 +86,9 @@ export function BoardHeader({
               strokeWidth={1.5}
             />
           </TooltipTrigger>
-          <TooltipContent>View graph</TooltipContent>
+          <TooltipContent>
+            {graphOpen ? "Back to writing" : "View graph"}
+          </TooltipContent>
         </Tooltip>
       </div>
     </header>

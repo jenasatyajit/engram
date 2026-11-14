@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { AgentPanel } from "@/components/agent-panel"
 import { BoardHeader, type Mode } from "@/components/board-header"
+import { GraphScreen } from "@/components/graph/graph-screen"
 import { useIdle } from "@/hooks/use-idle"
 import { LIMITS } from "@/lib/board/inputs"
 import type { BoardView } from "@/lib/board/repo"
@@ -41,6 +42,19 @@ function EditorScreen() {
   const [mode, setMode] = useState<Mode>("brainstorm")
   const [aiEnabled, setAiEnabled] = useState(true)
   const { isIdle, ping } = useIdle(SLEEP_AFTER_MS)
+  const screen = useEditor((s) => s.screen)
+  const showGraph = useEditor((s) => s.showGraph)
+  const showEditor = useEditor((s) => s.showEditor)
+  const busy = useEditor((s) => s.busy)
+
+  const agent = (
+    <aside className="sticky top-12 hidden w-[320px] shrink-0 self-start lg:block">
+      <AgentPanel
+        messages={AGENT_MESSAGES}
+        mood={isIdle ? "sleeping" : "idle"}
+      />
+    </aside>
+  )
 
   return (
     <div className="flex h-svh flex-col overflow-hidden">
@@ -49,30 +63,37 @@ function EditorScreen() {
         onModeChange={setMode}
         aiEnabled={aiEnabled}
         onAiEnabledChange={setAiEnabled}
+        graphOpen={screen === "graph"}
+        onToggleGraph={() => {
+          if (busy) return
+          if (screen === "graph") showEditor()
+          else showGraph()
+        }}
       />
 
-      <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex min-h-full gap-10 px-8 pt-12 pb-24 md:pl-[88px] lg:pr-10">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex min-h-8 max-w-3xl items-center justify-between gap-4">
-              <NodeBreadcrumb />
-              <NodeMenu />
+      {screen === "graph" ? (
+        <main className="flex min-h-0 flex-1 px-6 pt-4 pb-6">
+          <GraphScreen />
+        </main>
+      ) : (
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex min-h-full gap-10 px-8 pt-12 pb-24 md:pl-[88px] lg:pr-10">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-h-8 max-w-3xl items-center justify-between gap-4">
+                <NodeBreadcrumb />
+                <NodeMenu />
+              </div>
+
+              <TitleField onType={ping} />
+              <BodyField onType={ping} />
+              <ChangeBar />
+              <BranchChips />
             </div>
 
-            <TitleField onType={ping} />
-            <BodyField onType={ping} />
-            <ChangeBar />
-            <BranchChips />
+            {agent}
           </div>
-
-          <aside className="sticky top-12 hidden w-[320px] shrink-0 self-start lg:block">
-            <AgentPanel
-              messages={AGENT_MESSAGES}
-              mood={isIdle ? "sleeping" : "idle"}
-            />
-          </aside>
-        </div>
-      </main>
+        </main>
+      )}
     </div>
   )
 }

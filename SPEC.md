@@ -136,7 +136,7 @@ Free credits are small, so these are required:
 
 - **Home:** one centered input ("What are you thinking about?"), the mode toggle, the AI toggle, and a list of recent boards.
 - **Board screen:** the graph in the center; a right panel with chat, the selected node's text, its version history and the suggestions tray; a top bar with mode toggle, AI toggle, timeline control and export.
-- **Graph:** tree-style layout with cross-links (not a free-floating force layout), so the structure is easy to read.
+- **Graph:** an Obsidian-style force-directed graph of one board, opened from the top bar and replacing the editor. Two layouts with a toggle: **Free** (force cloud) and **Tree** (same physics, with branches arranged in levels so the structure is easy to read). Nodes can be dragged; hovering highlights a node's neighbours; clicking a node opens it in the editor. Positions are not saved: the layout re-settles each time.
 - **Nodes show:** type label (if any), version indicator, AI-authored marker, and a suggestion dot.
 - **Ghost items:** AI proposals appear visually distinct (faded or dashed) until accepted.
 - **Timeline:** a control that shows the board as it was at any earlier moment.
@@ -150,7 +150,7 @@ Free credits are small, so these are required:
 | UI | shadcn/ui + Tailwind CSS (already set up) |
 | Database | SQLite via Drizzle ORM, with Drizzle Kit migrations |
 | Hosting of data | Turso (hosted SQLite, libSQL) from the start, in development and when deployed. Connection details in `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` (server-side env only) |
-| Graph rendering | React Flow with an automatic tree layout (dagre or elkjs) |
+| Graph rendering | `react-force-graph-2d` (canvas, d3-force physics) with Free and Tree layouts |
 | Client state | Zustand |
 | Validation and shared types | Zod |
 | LLM | Sarvam `sarvam-105b` (server-side only) |
@@ -204,7 +204,7 @@ Each milestone must be usable and reviewed by the owner before starting the next
 | D11 | Web search through Exa as a model tool; unsourced facts shown as unverified | The model alone can state plausible but wrong facts |
 | D12 | No embedding model in version 1; send the whole board to the model | The context window is large enough; Sarvam embeddings require requesting access; simpler and finds meaning-level links |
 | D13 | Embeddings may be added later (local model) if boards grow large or cross-board search is wanted | Deferred, not rejected |
-| D14 | Tree layout with cross-links, via React Flow | Easier to think in than a free-floating force graph |
+| D14 | Force-directed graph (`react-force-graph-2d`) with a Free layout and a Tree layout. Revised 2026-11-14 by the owner; previously "tree layout with cross-links, via React Flow" | Owner wants an Obsidian-style interactive graph; Tree layout keeps the branch structure readable; canvas easily handles boards of a few hundred nodes |
 | D15 | Append-only versions and soft deletes | Enables replay and protects history |
 | D16 | Cost controls (debounce, caching, daily cap) are required | Free credits are small |
 | D17 | Local-only needs no login; deployed needs a shared password | Protects private data and AI credits |

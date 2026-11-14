@@ -19,7 +19,11 @@ import { clearLocalDraft, readLocalDraft, writeLocalDraft } from "./local-draft"
 export type Target =
   { kind: "node"; nodeId: string } | { kind: "new"; parentId: string | null }
 
+export type Screen = "editor" | "graph"
+
 type EditorState = {
+  /** Writing screen or the board graph (the graph replaces the editor). */
+  screen: Screen
   boardId: string | null
   title: string
   savedTitle: string
@@ -46,6 +50,11 @@ type EditorActions = {
   goTo: (target: Target) => Promise<void>
   /** Leave the current node and open an empty branch under it. */
   newBranch: () => Promise<void>
+  /** Leave the current node (auto-saving edits) and show the graph. */
+  showGraph: () => Promise<void>
+  showEditor: () => void
+  /** From the graph: open a node in the editor. */
+  openFromGraph: (nodeId: string) => Promise<void>
   setType: (type: NodeType | null) => Promise<void>
   deleteCurrent: () => Promise<void>
 }
@@ -92,6 +101,7 @@ function initialTarget(view: BoardView | null): Target {
 export function createEditorStore(initialView: BoardView | null) {
   const target = initialTarget(initialView)
   const initial: EditorState = {
+    screen: "editor",
     boardId: initialView?.board.id ?? null,
     title: initialView?.board.title ?? "",
     savedTitle: initialView?.board.title ?? "",
@@ -296,6 +306,19 @@ export function createEditorStore(initialView: BoardView | null) {
           if (!savedTo) return
           open({ kind: "new", parentId: savedTo })
         }),
+
+      showGraph: () =>
+        serial(async () => {
+          if ((await commit(true)) === false) return
+          set({ screen: "graph" })
+        }),
+
+      showEditor: () => set({ screen: "editor" }),
+
+      openFromGraph: async (nodeId) => {
+        await get().goTo({ kind: "node", nodeId })
+        set({ screen: "editor" })
+      },
 
       setType: (type) =>
         serial(async () => {

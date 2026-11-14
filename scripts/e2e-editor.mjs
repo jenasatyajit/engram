@@ -168,6 +168,42 @@ await settle()
 check("Undo restores the branch and opens it", (await bodyText()).startsWith("Go might"))
 await shot("4-final")
 
+// 8. Graph view. Opening it counts as leaving the node, so edits auto-save first.
+await focus("#thought-body")
+await type(" Saved by opening the graph.")
+await evaluate(`document.querySelector('button[aria-label="View graph"]').click()`)
+await wait(4500) // let the physics settle and the view fit
+check("the graph replaces the editor", await evaluate(`!!document.querySelector('[data-testid=board-graph] canvas') && !document.querySelector('#thought-body')`))
+check("the graph shows every thought", await evaluate(`document.body.innerText.includes('3 thoughts')`))
+await shot("5-graph-free")
+
+const target = await evaluate(`(()=>{const n=window.__engramGraph?.nodes().find(n=>n.depth===0); return n ? {id:n.id, at: window.__engramGraph.screenOf(n.id)} : null})()`)
+check("a node can be located on the canvas", !!target?.at, JSON.stringify(target?.at))
+if (target?.at) {
+  const { x, y } = target.at
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y })
+  await wait(300)
+  await shot("6-graph-hover")
+  await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
+  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
+  await settle()
+  check("clicking a node opens it in the editor", (await bodyText())?.startsWith("Rust is worth learning"), (await bodyText())?.slice(0, 40))
+}
+
+await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>b.textContent.includes('Go might'))?.click()`)
+await settle()
+check("edits made before opening the graph were saved", (await bodyText()).endsWith("Saved by opening the graph.") && (await barText()) === null)
+
+await evaluate(`document.querySelector('button[aria-label="View graph"]').click()`)
+await wait(1500)
+await evaluate(`[...document.querySelectorAll('[aria-label="Graph layout"] button')].find(b=>b.textContent.trim()==='Tree')?.click()`)
+await wait(4000)
+check("Tree layout can be selected", await evaluate(`[...document.querySelectorAll('[aria-label="Graph layout"] button')].find(b=>b.textContent.trim()==='Tree')?.getAttribute('aria-pressed') === 'true'`))
+await shot("7-graph-tree")
+await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 })
+await wait(800)
+check("Esc returns to the editor", await evaluate(`!!document.querySelector('#thought-body')`))
+
 ws.close()
 browser.kill()
 await wait(500)

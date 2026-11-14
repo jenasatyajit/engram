@@ -55,6 +55,7 @@
 }
 
 :root {
+  --graph-accent: oklch(0.62 0.17 130);
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -90,6 +91,8 @@
 }
 
 .dark {
+  /* Graph highlight colour (Obsidian-style lime) */
+  --graph-accent: oklch(0.86 0.19 125);
   --background: oklch(0.265 0.004 75);
   --foreground: oklch(0.985 0.001 106.423);
   --card: oklch(0.216 0.006 56.043);
