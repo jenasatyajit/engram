@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { useEditor } from "@/lib/editor/provider"
 
-import { snippet } from "./snippet"
+import { nodeLabel } from "@/lib/board/labels"
+
+import { AiMark } from "./ai-mark"
 
 /** The current node's branches, plus "+ New branch". */
 export function BranchChips() {
@@ -42,7 +44,8 @@ export function BranchChips() {
           className="max-w-[16rem] rounded-full"
           title={child.text}
         >
-          <span className="truncate">{snippet(child.text, 32)}</span>
+          <span className="truncate">{nodeLabel(child, 32)}</span>
+          {child.titleSource === "ai" && <AiMark />}
         </Button>
       ))}
       <Button

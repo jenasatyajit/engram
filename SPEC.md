@@ -56,6 +56,7 @@ Success means: the owner can open a finished board and see not just what they co
 
 - **Board:** one topic or problem being thought through. Contains nodes and connections.
 - **Node:** a single thought. Starts as plain text. May optionally be labelled with a type: thought, question, assumption, evidence, objection, defense, or verdict.
+- **Node title:** a short 2–4 word name for a node, shown in the breadcrumb, branch chips, sidebar and graph. A new branch starts with a placeholder title `B#: <parent title>` (# = its branch number under that parent). When the owner saves text (revise, branch instead, new thought, or auto-save on leaving), the AI writes a new title from the node body, if the AI toggle is on. Titles are labels, not versioned (no history), and AI-written titles are marked as AI. A node with no title falls back to its first line.
 - **Version:** a saved state of a node's text. Every edit creates a new version with a timestamp and an optional note on why it changed. Old versions stay viewable.
 - **Connection:** a link between two nodes. Kinds: child (branch), related, supports, contradicts, depends-on. Each connection records whether the owner or the AI created it and whether it is confirmed or only suggested.
 - **Revise vs Branch (key distinction):**
@@ -95,6 +96,8 @@ A single toggle, always visible, that applies to both modes. Off means no AI cal
 ### 7.1 Model and service
 - Model: Sarvam `sarvam-105b` (128K token context window), via the v1 chat completions endpoint.
 - Not Sarvam-M (deprecated). Not the v2 endpoint (requires beta access).
+- **Small generation jobs (node titles):** OpenRouter chat completions with `inclusionai/ling-3.1-flash`. This model has no JSON-schema mode on OpenRouter, so the title is returned through a forced tool call whose arguments are validated (7.2). Reasoning is turned off and the output length is capped. Key in `OPENROUTER_API_KEY` (server-side only).
+- **Decision models (planned, not used yet):** OpenRouter's Decisions API (`/api/alpha/decisions`, e.g. TypeSafe Jev, Perplexity Decider) returns typed probabilities (`noul` yes/no, `choice`, `score`) instead of text. Planned uses: gate whether an edit is worth a new title (skips needless LLM calls), suggest a node's type label, yes/no checks for duplicates, conflicts and stale nodes (7.4), and labelling Critic arguments for/against. Not suitable for writing titles: they cannot generate text, and the Extractions API only copies phrases verbatim.
 - All AI calls happen on the server. The API key is never exposed to the browser.
 - All AI calls go through one dedicated module so the model or provider can be swapped without touching the rest of the app.
 
@@ -153,7 +156,7 @@ Free credits are small, so these are required:
 | Graph rendering | `react-force-graph-2d` (canvas, d3-force physics) with Free and Tree layouts |
 | Client state | Zustand |
 | Validation and shared types | Zod |
-| LLM | Sarvam `sarvam-105b` (server-side only) |
+| LLM | Sarvam `sarvam-105b` (server-side only); OpenRouter `inclusionai/ling-3.1-flash` for node titles (D21) |
 | Web search | Exa API (server-side only) |
 | Tests | Vitest, focused on versioning and graph logic |
 
@@ -210,6 +213,9 @@ Each milestone must be usable and reviewed by the owner before starting the next
 | D17 | Local-only needs no login; deployed needs a shared password | Protects private data and AI credits |
 | D18 | Share view is deferred until after version 1 | Capture and AI value come first |
 | D19 | Build in the order of section 10, starting with no AI | If the owner does not enjoy thinking in the plain tool, AI will not fix that |
+| D20 | Node titles are written by AI only (no manual title for now), from the node body, via OpenRouter `inclusionai/ling-3.1-flash`. New branches get the placeholder `B#: <parent title>` until text is saved. Titles are applied automatically (no accept step), marked as AI, and have no history. Added 2026-11-14 by the owner | Fast way to recognise nodes; a title is a label, not the owner's content, so the accept step (principle 3) is waived for titles only. Built ahead of milestone 3 by the owner's choice; the AI toggle still turns it off |
+| D21 | OpenRouter is added as a second AI provider for small generation jobs; Sarvam `sarvam-105b` stays the model for the main AI features (D9) | Cheap, fast model for short outputs; all calls still go through the one AI module |
+| D22 | Decision models (OpenRouter Decisions API) are planned for gating, type labels, background yes/no checks and Critic stance labels, but not used yet; only the normal LLM is used for titles | They return probabilities, not text, so they cannot write titles; they are fast and cheap for typed decisions later |
 
 ## 13. Open items
 
@@ -225,3 +231,5 @@ Each milestone must be usable and reviewed by the owner before starting the next
 - Sarvam embeddings exist but require requesting access.
 - New Sarvam accounts receive a small amount of free credit; pricing has changed several times recently, so confirm on the dashboard.
 - Sarvam docs show no built-in web search, hence Exa.
+- OpenRouter `inclusionai/ling-3.1-flash`: 1M context; about $0.045 / $0.135 per 1M input/output tokens; supports `tools`, `tool_choice`, `max_tokens` and `reasoning`, but not `response_format` / structured outputs (checked via the OpenRouter models API, Nov 2026).
+- OpenRouter Decisions API is alpha; decision models (Jev 1.14 about 0.1 s, about $0.04 per 1M input tokens) return `noul` / `choice` / `score` / `box` answers, never generated text.

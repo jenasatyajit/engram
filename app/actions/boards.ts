@@ -5,6 +5,7 @@ import type { z } from "zod"
 import * as inputs from "@/lib/board/inputs"
 import * as repo from "@/lib/board/repo"
 import { db } from "@/lib/db/client"
+import { runAction } from "@/lib/actions/run"
 
 /*
  * Server actions: the only way the browser reaches the database (SPEC.md section 9).
@@ -12,44 +13,13 @@ import { db } from "@/lib/db/client"
  * object instead of throwing, so the UI can show errors without crashing.
  */
 
-export type ActionError = {
-  code: "INVALID_INPUT" | repo.BoardErrorCode | "SERVER_ERROR"
-  message: string
-}
-export type ActionResult<T> =
-  { ok: true; data: T } | { ok: false; error: ActionError }
+export type { ActionError, ActionResult } from "@/lib/actions/run"
 
-async function run<S extends z.ZodType, T>(
+const run = <S extends z.ZodType, T>(
   schema: S,
   input: unknown,
   fn: (parsed: z.infer<S>) => Promise<T>
-): Promise<ActionResult<T>> {
-  const parsed = schema.safeParse(input)
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: {
-        code: "INVALID_INPUT",
-        message: parsed.error.issues.map((i) => i.message).join("; "),
-      },
-    }
-  }
-  try {
-    return { ok: true, data: await fn(parsed.data) }
-  } catch (error) {
-    if (error instanceof repo.BoardError) {
-      return { ok: false, error: { code: error.code, message: error.message } }
-    }
-    console.error("[boards action]", error)
-    return {
-      ok: false,
-      error: {
-        code: "SERVER_ERROR",
-        message: "Something went wrong saving that.",
-      },
-    }
-  }
-}
+) => runAction("boards", schema, input, fn)
 
 // ---------- Boards ----------
 

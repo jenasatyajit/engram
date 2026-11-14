@@ -74,6 +74,10 @@ const settle = () => wait(1200)
 
 await send("Emulation.setDeviceMetricsOverride", { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false })
 await send("Page.navigate", { url: BASE })
+await wait(1500)
+// Keep e2e runs offline: turn the AI toggle off so no OpenRouter calls are made.
+await evaluate(`localStorage.setItem("engram:ai-enabled", "0")`)
+await send("Page.reload")
 await wait(2500)
 
 // 1. New board: title, then first thought.
@@ -109,7 +113,7 @@ check("Alt+Enter opens an empty new branch", (await bodyText()) === "" && (await
 await type("Go might be faster to learn.")
 await evaluate(`document.querySelector('nav[aria-label=breadcrumb] button').click()`)
 await settle()
-check("leaving a new branch saves it as a child", (await chips()).some((c) => c.includes("Go might be")), (await chips()).join(" | "))
+check("leaving a new branch saves it as a child", (await evaluate([...document.querySelectorAll('nav[aria-label=Branches] button')].some(b=>(b.title||'').startsWith('Go might be')))), (await chips()).join(" | "))
 check("back on the root after leaving", (await bodyText()).startsWith("Rust is worth"))
 
 // 4. Branch instead: the original stays untouched.
@@ -127,7 +131,7 @@ check("root now has two branches", (await chips()).filter((c) => !c.includes("Ne
 // 5. Leave with unsaved edits via a chip: auto-saved revise.
 await focus("#thought-body")
 await type(" (edited, then left)")
-await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>b.textContent.includes('Go might'))?.click()`)
+await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>(b.title||b.textContent).includes('Go might'))?.click()`)
 await settle()
 await evaluate(`document.querySelector('nav[aria-label=breadcrumb] button').click()`)
 await settle()
@@ -154,14 +158,14 @@ await wait(300)
 check("Discard reverts to the saved text", !(await bodyText()).endsWith(" DRAFT") && (await barText()) === null)
 
 // 7. Delete a branch, then undo.
-await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>b.textContent.includes('Go might'))?.click()`)
+await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>(b.title||b.textContent).includes('Go might'))?.click()`)
 await settle()
 await evaluate(`document.querySelector('[aria-label="Thought options"]').click()`)
 await wait(400)
 await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(i=>i.textContent.includes('Delete'))?.click()`)
 await settle()
 check("deleting a branch returns to its parent", (await bodyText()).startsWith("Rust is worth"))
-check("the deleted branch is gone from the chips", !(await chips()).some((c) => c.includes("Go might")))
+check("the deleted branch is gone from the chips", !(await evaluate([...document.querySelectorAll('nav[aria-label=Branches] button')].some(b=>(b.title||'').startsWith('Go might')))))
 await shot("3-deleted-toast")
 await clickButton("Undo")
 await settle()
@@ -190,7 +194,7 @@ if (target?.at) {
   check("clicking a node opens it in the editor", (await bodyText())?.startsWith("Rust is worth learning"), (await bodyText())?.slice(0, 40))
 }
 
-await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>b.textContent.includes('Go might'))?.click()`)
+await evaluate(`[...document.querySelectorAll('nav[aria-label=Branches] button')].find(b=>(b.title||b.textContent).includes('Go might'))?.click()`)
 await settle()
 check("edits made before opening the graph were saved", (await bodyText()).endsWith("Saved by opening the graph.") && (await barText()) === null)
 
@@ -203,6 +207,82 @@ await shot("7-graph-tree")
 await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 })
 await wait(800)
 check("Esc returns to the editor", await evaluate(`!!document.querySelector('#thought-body')`))
+
+// 9. Boards sidebar.
+const sidebarWidth = () => evaluate(`Math.round(document.querySelector('aside[aria-label=Boards]').getBoundingClientRect().width)`)
+const agentVisible = () => evaluate(`!!document.querySelector('section[aria-label=Agent]')`)
+const sidebarText = () => evaluate(`document.querySelector('aside[aria-label=Boards]').innerText`)
+check("sidebar starts closed", (await sidebarWidth()) === 0, String(await sidebarWidth()))
+check("agent space is visible while the sidebar is closed", await agentVisible())
+
+await evaluate(`document.querySelector('button[aria-label="Open sidebar"]').click()`)
+await wait(900)
+check("toggle opens the sidebar to full width", (await sidebarWidth()) === 280, String(await sidebarWidth()))
+check("agent space closes while the sidebar is open", !(await agentVisible()))
+check("the editor is pushed aside, not covered", await evaluate(`document.querySelector('textarea[aria-label=Title]').getBoundingClientRect().left > 280`))
+await shot("8-sidebar-open")
+const firstBoardPath = await evaluate("location.pathname")
+check("the current board is listed and its thoughts show in the dropdown", (await sidebarText()).includes("Should I learn Rust?") && (await sidebarText()).includes("B1: "))
+
+// Open a thought from the sidebar tree.
+await evaluate(`[...document.querySelectorAll('aside[aria-label=Boards] [data-sidebar=menu-sub-button]')].find(b=>(b.title||b.textContent).startsWith('Go might'))?.click()`)
+await settle()
+check("clicking a thought in the sidebar opens it", (await bodyText()).startsWith("Go might"))
+
+// New board, then the list shows both boards.
+await evaluate(`[...document.querySelectorAll('aside[aria-label=Boards] button')].find(b=>b.textContent.trim()==='New board')?.click()`)
+await wait(2500)
+check("New board opens an empty board", (await evaluate("location.pathname")) === "/" && (await bodyText()) === "")
+check("sidebar stays open on the new board", (await sidebarWidth()) === 280)
+await focus("textarea[aria-label=Title]")
+await type("Second board")
+await key()
+await wait(2500)
+check("the new board appears in the sidebar", (await sidebarText()).includes("Second board"))
+
+// Search filters boards by title.
+await evaluate(`(()=>{const i=document.querySelector('input[aria-label="Search boards"]');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'rust');i.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+await wait(400)
+check("search filters boards by title", (await sidebarText()).includes("Should I learn Rust?") && !(await sidebarText()).includes("Second board"))
+await shot("9-sidebar-search")
+await evaluate(`(()=>{const i=document.querySelector('input[aria-label="Search boards"]');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'');i.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+await wait(300)
+
+// Switch boards from the sidebar.
+await evaluate(`[...document.querySelectorAll('aside[aria-label=Boards] [data-sidebar=menu-button]')].find(b=>b.textContent.includes('Should I learn Rust?'))?.click()`)
+await wait(3000)
+check("clicking a board opens it", (await evaluate("location.pathname")) === firstBoardPath)
+
+// The open/closed state is remembered across reloads.
+await send("Page.reload")
+await wait(3000)
+check("sidebar is still open after a reload", (await sidebarWidth()) === 280)
+
+// Rename and delete (with undo) another board from its menu.
+const openMenuOf = (name) => evaluate(`(()=>{const li=[...document.querySelectorAll('aside[aria-label=Boards] [data-sidebar=menu-item]')].find(li=>li.querySelector('[data-sidebar=menu-button]')?.textContent.includes(${JSON.stringify(name)}));li?.querySelector('button[aria-label="Board options"]')?.click();return !!li})()`)
+await openMenuOf("Second board")
+await wait(400)
+await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(i=>i.textContent.includes('Rename'))?.click()`)
+await wait(400)
+await evaluate(`(()=>{const i=document.querySelector('input[aria-label="Board name"]');const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;set.call(i,'Renamed board');i.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+await focus('input[aria-label="Board name"]')
+await key()
+await wait(1500)
+check("a board can be renamed from the sidebar", (await sidebarText()).includes("Renamed board"))
+
+await openMenuOf("Renamed board")
+await wait(400)
+await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(i=>i.textContent.includes('Delete'))?.click()`)
+await wait(1500)
+check("deleting a board removes it from the list", !(await sidebarText()).includes("Renamed board"))
+await clickButton("Undo")
+await wait(1500)
+check("Undo brings the board back", (await sidebarText()).includes("Renamed board"))
+
+// Closing the sidebar brings the agent space back.
+await evaluate(`document.querySelector('button[aria-label="Close sidebar"]').click()`)
+await wait(900)
+check("closing the sidebar brings back the agent space", (await sidebarWidth()) === 0 && (await agentVisible()))
 
 ws.close()
 browser.kill()

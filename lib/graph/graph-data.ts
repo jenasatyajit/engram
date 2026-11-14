@@ -1,4 +1,4 @@
-import { snippet } from "@/components/editor/snippet"
+import { nodeLabel } from "@/lib/board/labels"
 import type { BoardView } from "@/lib/board/repo"
 import type { ConnectionKind, NodeType } from "@/lib/db/schema"
 
@@ -6,6 +6,8 @@ import type { ConnectionKind, NodeType } from "@/lib/db/schema"
 export type GraphNode = {
   id: string
   label: string
+  /** The label is an AI-written title (shown with a marker). */
+  aiTitle: boolean
   type: NodeType | null
   versionCount: number
   /** Number of live links touching this node; drives the dot size. */
@@ -55,7 +57,8 @@ export function toGraphData(view: BoardView | null): GraphData {
   return {
     nodes: view.nodes.map((n) => ({
       id: n.id,
-      label: snippet(n.text, 26),
+      label: nodeLabel(n, 26),
+      aiTitle: n.titleSource === "ai",
       type: n.type,
       versionCount: n.versionCount,
       degree: degree.get(n.id) ?? 0,

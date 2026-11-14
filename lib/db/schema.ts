@@ -37,6 +37,9 @@ export type Author = (typeof AUTHORS)[number]
 export const STATUSES = ["confirmed", "suggested"] as const
 export type Status = (typeof STATUSES)[number]
 
+export const TITLE_SOURCES = ["placeholder", "ai"] as const
+export type TitleSource = (typeof TITLE_SOURCES)[number]
+
 export const CONNECTION_KINDS = [
   "child",
   "related",
@@ -84,6 +87,12 @@ export const nodes = sqliteTable(
     type: text("type", { enum: NODE_TYPES }),
     createdBy: text("created_by", { enum: AUTHORS }).notNull(),
     status: text("status", { enum: STATUSES }).notNull().default("confirmed"),
+    /** Short name shown in breadcrumbs, chips, sidebar and graph. Null = use the first line. No history. */
+    title: text("title"),
+    /** "placeholder" = the `B#: <parent title>` name given at creation; "ai" = written by the AI. */
+    titleSource: text("title_source", { enum: TITLE_SOURCES }),
+    /** The version an AI title was written from, so a slow reply can't overwrite a newer title. */
+    titledVersionId: text("titled_version_id"),
     createdAt: createdAt(),
     deletedAt: deletedAt(),
   },
@@ -169,6 +178,15 @@ export const deletionEvents = sqliteTable(
     ),
   ]
 )
+
+/**
+ * AI calls per UTC day, for the configurable daily cap (SPEC.md 7.6, D16).
+ * One row per day; incremented atomically before each AI call.
+ */
+export const aiUsage = sqliteTable("ai_usage", {
+  day: text("day").primaryKey(),
+  calls: integer("calls").notNull().default(0),
+})
 
 export type Board = typeof boards.$inferSelect
 export type Node = typeof nodes.$inferSelect

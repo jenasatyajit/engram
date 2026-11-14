@@ -1,9 +1,14 @@
 "use client"
 
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ChartRelationshipIcon } from "@hugeicons/core-free-icons"
+import {
+  ChartRelationshipIcon,
+  SidebarLeftIcon,
+} from "@hugeicons/core-free-icons"
 
 import { Button } from "@/components/ui/button"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { useSidebar } from "@/components/ui/sidebar"
 import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
@@ -21,6 +26,8 @@ type BoardHeaderProps = {
   onAiEnabledChange: (enabled: boolean) => void
   graphOpen: boolean
   onToggleGraph: () => void
+  /** Shown next to the sidebar toggle (the node breadcrumb). */
+  leading?: React.ReactNode
 }
 
 export function BoardHeader({
@@ -30,10 +37,45 @@ export function BoardHeader({
   onAiEnabledChange,
   graphOpen,
   onToggleGraph,
+  leading,
 }: BoardHeaderProps) {
+  const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
+  const sidebarOpen = isMobile ? openMobile : open
+
   return (
-    <header className="flex h-[78px] shrink-0 items-center justify-end bg-background px-8">
-      <div className="flex items-center gap-5">
+    <header className="flex h-[78px] shrink-0 items-center justify-between gap-6 bg-background px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+                aria-expanded={sidebarOpen}
+                onClick={toggleSidebar}
+                className="size-10 text-foreground"
+              />
+            }
+          >
+            <HugeiconsIcon
+              icon={SidebarLeftIcon}
+              className="size-6"
+              strokeWidth={1.5}
+            />
+          </TooltipTrigger>
+          <TooltipContent className="flex items-center gap-2">
+            {sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            <KbdGroup>
+              <Kbd>Ctrl</Kbd>
+              <Kbd>B</Kbd>
+            </KbdGroup>
+          </TooltipContent>
+        </Tooltip>
+        {leading}
+      </div>
+
+      <div className="flex shrink-0 items-center gap-5">
         <ToggleGroup
           value={[mode]}
           onValueChange={(value) => {

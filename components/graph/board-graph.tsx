@@ -273,6 +273,7 @@ export default function BoardGraph({
               ctx.fillText(n.label, x, y + r + 4 / scale)
 
               const meta = [
+                n.aiTitle ? "✦ AI" : null,
                 n.type,
                 n.versionCount > 1 ? `v${n.versionCount}` : null,
               ]

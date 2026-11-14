@@ -36,6 +36,13 @@
       "when": 1794653626442,
       "tag": "0004_version_auto_saved",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794668187792,
+      "tag": "0005_node_titles",
+      "breakpoints": true
     }
   ]
 }

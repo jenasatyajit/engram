@@ -8,9 +8,12 @@ import {
   type Board,
   type Connection,
   type NodeType,
+  type TitleSource,
   type NodeVersion,
 } from "@/lib/db/schema"
 import type { Db } from "@/lib/db/types"
+
+import { branchPlaceholder, nodeLabel } from "./labels"
 
 import type {
   ConnectInput,
@@ -54,6 +57,11 @@ export type NodeView = {
   versionCount: number
   lastEditedAt: Date
   parentId: string | null
+  /** Short name; null = show the first line of the text (see lib/board/labels.ts). */
+  title: string | null
+  titleSource: TitleSource | null
+  /** Branches ever made under this node, deleted ones included (the next one is B<count+1>). */
+  branchCount: number
 }
 
 export type BoardView = {
@@ -154,28 +162,43 @@ export async function restoreBoard(db: Db, boardId: string) {
 export async function getBoard(db: Db, boardId: string): Promise<BoardView> {
   const board = await requireLiveBoard(db, boardId)
 
-  const [nodeRows, versionRows, connectionRows] = await db.batch([
-    db
-      .select()
-      .from(nodes)
-      .where(and(eq(nodes.boardId, boardId), isNull(nodes.deletedAt))),
-    db
-      .select({
-        nodeId: nodeVersions.nodeId,
-        text: nodeVersions.text,
-        createdAt: nodeVersions.createdAt,
-      })
-      .from(nodeVersions)
-      .innerJoin(nodes, eq(nodes.id, nodeVersions.nodeId))
-      .where(and(eq(nodes.boardId, boardId), isNull(nodes.deletedAt)))
-      .orderBy(...versionOrderAsc),
-    db
-      .select()
-      .from(connections)
-      .where(
-        and(eq(connections.boardId, boardId), isNull(connections.deletedAt))
-      ),
-  ])
+  const [nodeRows, versionRows, connectionRows, branchCountRows] =
+    await db.batch([
+      db
+        .select()
+        .from(nodes)
+        .where(and(eq(nodes.boardId, boardId), isNull(nodes.deletedAt))),
+      db
+        .select({
+          nodeId: nodeVersions.nodeId,
+          text: nodeVersions.text,
+          createdAt: nodeVersions.createdAt,
+        })
+        .from(nodeVersions)
+        .innerJoin(nodes, eq(nodes.id, nodeVersions.nodeId))
+        .where(and(eq(nodes.boardId, boardId), isNull(nodes.deletedAt)))
+        .orderBy(...versionOrderAsc),
+      db
+        .select()
+        .from(connections)
+        .where(
+          and(eq(connections.boardId, boardId), isNull(connections.deletedAt))
+        ),
+      // Every branch ever made per parent (deleted ones too), for B# numbering.
+      db
+        .select({
+          parentId: connections.fromNodeId,
+          count: sql<number>`count(*)`,
+        })
+        .from(connections)
+        .where(
+          and(eq(connections.boardId, boardId), eq(connections.kind, "child"))
+        )
+        .groupBy(connections.fromNodeId),
+    ])
+  const branchCountOf = new Map(
+    branchCountRows.map((r) => [r.parentId, Number(r.count)])
+  )
 
   // Rows are oldest-first, so the last one seen per node is its current version.
   const latest = new Map<
@@ -214,6 +237,9 @@ export async function getBoard(db: Db, boardId: string): Promise<BoardView> {
       versionCount: v?.count ?? 0,
       lastEditedAt: v?.createdAt ?? n.createdAt,
       parentId: parentOf.get(n.id) ?? null,
+      title: n.title,
+      titleSource: n.titleSource,
+      branchCount: branchCountOf.get(n.id) ?? 0,
     }
   })
 
@@ -245,6 +271,9 @@ export async function createNode(db: Db, input: CreateNodeInput) {
     parentId = parent.id
   }
 
+  // A new branch starts as "B<n>: <parent title>" until the AI names it (D20).
+  const title = parentId ? await placeholderTitle(db, parentId) : null
+
   const now = new Date()
   const nodeId = crypto.randomUUID()
   const insertNode = db.insert(nodes).values({
@@ -252,6 +281,8 @@ export async function createNode(db: Db, input: CreateNodeInput) {
     boardId: input.boardId,
     type: input.type ?? null,
     createdBy: "owner",
+    title,
+    titleSource: title ? "placeholder" : null,
     createdAt: now,
   })
   const insertVersion = db
@@ -482,6 +513,89 @@ export async function restoreConnection(db: Db, connectionId: string) {
       .set({ updatedAt: new Date() })
       .where(eq(boards.id, connection.boardId)),
   ])
+}
+
+// ---------- Titles ----------
+
+/**
+ * `B<n>: <parent title>`. n counts every branch ever made under the parent
+ * (deleted ones too), so numbers stay unique and never shift.
+ */
+async function placeholderTitle(db: Db, parentId: string) {
+  const [[parent], [{ count }], [latestText]] = await db.batch([
+    db
+      .select({ title: nodes.title })
+      .from(nodes)
+      .where(eq(nodes.id, parentId))
+      .limit(1),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(connections)
+      .where(
+        and(eq(connections.fromNodeId, parentId), eq(connections.kind, "child"))
+      ),
+    db
+      .select({ text: nodeVersions.text })
+      .from(nodeVersions)
+      .where(eq(nodeVersions.nodeId, parentId))
+      .orderBy(...versionOrderDesc)
+      .limit(1),
+  ])
+  return branchPlaceholder(
+    Number(count) + 1,
+    nodeLabel(
+      { title: parent?.title ?? null, text: latestText?.text ?? "" },
+      40
+    )
+  )
+}
+
+/** The current (latest) version of a live node, or null if the node is gone or has none. */
+export async function latestVersion(db: Db, nodeId: string) {
+  const [row] = await db
+    .select({
+      id: nodeVersions.id,
+      text: nodeVersions.text,
+      titledVersionId: nodes.titledVersionId,
+    })
+    .from(nodeVersions)
+    .innerJoin(nodes, eq(nodes.id, nodeVersions.nodeId))
+    .where(and(eq(nodeVersions.nodeId, nodeId), isNull(nodes.deletedAt)))
+    .orderBy(...versionOrderDesc)
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Store an AI-written title, but only if `versionId` is still the node's latest version.
+ * A slow reply for an older version is dropped, so titles never go backwards.
+ * Returns true if the title was applied.
+ */
+export async function applyAiTitle(
+  db: Db,
+  nodeId: string,
+  versionId: string,
+  title: string
+) {
+  const latestId = db
+    .select({ id: nodeVersions.id })
+    .from(nodeVersions)
+    .where(eq(nodeVersions.nodeId, nodeId))
+    .orderBy(...versionOrderDesc)
+    .limit(1)
+
+  const updated = await db
+    .update(nodes)
+    .set({ title, titleSource: "ai", titledVersionId: versionId })
+    .where(
+      and(
+        eq(nodes.id, nodeId),
+        isNull(nodes.deletedAt),
+        sql`${versionId} = (${latestId})`
+      )
+    )
+    .returning({ id: nodes.id })
+  return updated.length > 0
 }
 
 // ---------- Lookups ----------

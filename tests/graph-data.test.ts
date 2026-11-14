@@ -18,6 +18,9 @@ function node(id: string, parentId: string | null, text = id): NodeView {
     versionCount: 1,
     lastEditedAt: now,
     parentId,
+    title: null,
+    titleSource: null,
+    branchCount: 0,
   }
 }
 

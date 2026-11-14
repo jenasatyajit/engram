@@ -1,10 +1,13 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 
 import { AgentPanel } from "@/components/agent-panel"
 import { BoardHeader, type Mode } from "@/components/board-header"
 import { GraphScreen } from "@/components/graph/graph-screen"
+import { AppSidebar } from "@/components/sidebar/app-sidebar"
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { useIdle } from "@/hooks/use-idle"
 import { LIMITS } from "@/lib/board/inputs"
 import type { BoardView } from "@/lib/board/repo"
@@ -25,39 +28,75 @@ const AGENT_MESSAGES = [
 /** Mascot falls asleep after this long without typing. */
 const SLEEP_AFTER_MS = 30_000
 
-/** The writing screen for one board. `initialView` is null for a brand-new board. */
+/**
+ * The writing screen for one board. `initialView` is null for a brand-new board.
+ * `sidebarOpen` comes from the sidebar cookie (read on the server, so there is no flicker).
+ */
 export function BoardEditor({
   initialView,
+  initialNodeId,
+  sidebarOpen,
 }: {
   initialView: BoardView | null
+  initialNodeId?: string | null
+  sidebarOpen: boolean
 }) {
   return (
-    <EditorStoreProvider initialView={initialView}>
-      <EditorScreen />
+    <EditorStoreProvider
+      initialView={initialView}
+      initialNodeId={initialNodeId}
+    >
+      <SidebarProvider
+        defaultOpen={sidebarOpen}
+        className="h-svh min-h-0 overflow-hidden"
+      >
+        <AppSidebar />
+        <EditorScreen />
+      </SidebarProvider>
     </EditorStoreProvider>
   )
 }
 
 function EditorScreen() {
   const [mode, setMode] = useState<Mode>("brainstorm")
-  const [aiEnabled, setAiEnabled] = useState(true)
+  const aiEnabled = useEditor((s) => s.aiEnabled)
+  const setAiEnabled = useEditor((s) => s.setAiEnabled)
+  const restoreAiEnabled = useEditor((s) => s.restoreAiEnabled)
   const { isIdle, ping } = useIdle(SLEEP_AFTER_MS)
+
+  // The saved AI toggle lives in localStorage, which only exists in the browser.
+  useEffect(() => {
+    restoreAiEnabled()
+  }, [restoreAiEnabled])
   const screen = useEditor((s) => s.screen)
   const showGraph = useEditor((s) => s.showGraph)
   const showEditor = useEditor((s) => s.showEditor)
   const busy = useEditor((s) => s.busy)
+  const { open: sidebarOpen } = useSidebar()
 
+  // The agent space steps aside while the boards sidebar is open.
   const agent = (
-    <aside className="sticky top-12 hidden w-[320px] shrink-0 self-start lg:block">
-      <AgentPanel
-        messages={AGENT_MESSAGES}
-        mood={isIdle ? "sleeping" : "idle"}
-      />
-    </aside>
+    <AnimatePresence initial={false}>
+      {!sidebarOpen && (
+        <motion.aside
+          key="agent"
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 24 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="sticky top-12 hidden w-[320px] shrink-0 self-start lg:block"
+        >
+          <AgentPanel
+            messages={AGENT_MESSAGES}
+            mood={isIdle ? "sleeping" : "idle"}
+          />
+        </motion.aside>
+      )}
+    </AnimatePresence>
   )
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden">
+    <div className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden">
       <BoardHeader
         mode={mode}
         onModeChange={setMode}
@@ -69,6 +108,7 @@ function EditorScreen() {
           if (screen === "graph") showEditor()
           else showGraph()
         }}
+        leading={<NodeBreadcrumb />}
       />
 
       {screen === "graph" ? (
@@ -79,8 +119,7 @@ function EditorScreen() {
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex min-h-full gap-10 px-8 pt-12 pb-24 md:pl-[88px] lg:pr-10">
             <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex min-h-8 max-w-3xl items-center justify-between gap-4">
-                <NodeBreadcrumb />
+              <div className="flex min-h-8 max-w-3xl items-center justify-end gap-4">
                 <NodeMenu />
               </div>
 

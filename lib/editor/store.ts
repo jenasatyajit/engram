@@ -1,8 +1,10 @@
 import { toast } from "sonner"
 import { createStore } from "zustand/vanilla"
 
+import * as aiActions from "@/app/actions/ai"
 import * as actions from "@/app/actions/boards"
 import type { BoardView, NodeView } from "@/lib/board/repo"
+import { branchPlaceholder, nodeLabel } from "@/lib/board/labels"
 import type { NodeType } from "@/lib/db/schema"
 
 import { clearLocalDraft, readLocalDraft, writeLocalDraft } from "./local-draft"
@@ -32,6 +34,8 @@ type EditorState = {
   draft: string
   note: string
   busy: boolean
+  /** The global AI toggle (SPEC.md 6.3). Off = no AI calls of any kind. */
+  aiEnabled: boolean
 }
 
 type EditorActions = {
@@ -50,6 +54,8 @@ type EditorActions = {
   goTo: (target: Target) => Promise<void>
   /** Leave the current node and open an empty branch under it. */
   newBranch: () => Promise<void>
+  /** Leave the current node before navigating away (auto-saves edits). False if saving failed. */
+  leaveNode: () => Promise<boolean>
   /** Leave the current node (auto-saving edits) and show the graph. */
   showGraph: () => Promise<void>
   showEditor: () => void
@@ -57,6 +63,9 @@ type EditorActions = {
   openFromGraph: (nodeId: string) => Promise<void>
   setType: (type: NodeType | null) => Promise<void>
   deleteCurrent: () => Promise<void>
+  setAiEnabled: (enabled: boolean) => void
+  /** Load the saved AI toggle (call once after mount; localStorage is browser-only). */
+  restoreAiEnabled: () => void
 }
 
 export type EditorStore = EditorState & EditorActions
@@ -82,14 +91,27 @@ export function isDirty(state: Pick<EditorState, "view" | "target" | "draft">) {
     : state.draft.trim().length > 0
 }
 
+/**
+ * Title an unsaved new branch will get: `B<n>: <parent title>`, the same rule the
+ * server uses when it saves (lib/board/repo.ts). Null for a new root thought.
+ */
+export function newBranchTitle(view: BoardView | null, target: Target) {
+  if (target.kind !== "new" || !target.parentId) return null
+  const parent = nodeById(view, target.parentId)
+  if (!parent) return null
+  return branchPlaceholder(parent.branchCount + 1, nodeLabel(parent, 40))
+}
+
 /** The node the editor is "on": the target node, or the parent of a new branch. */
 export function anchorNodeId(target: Target) {
   return target.kind === "node" ? target.nodeId : target.parentId
 }
 
-/** The most recently edited node, used as the starting node when a board opens. */
-function initialTarget(view: BoardView | null): Target {
+/** The node a board opens on: the requested one if it exists, else the most recently edited. */
+function initialTarget(view: BoardView | null, nodeId?: string | null): Target {
   if (!view?.nodes.length) return { kind: "new", parentId: null }
+  if (nodeId && view.nodes.some((n) => n.id === nodeId))
+    return { kind: "node", nodeId }
   const latest = [...view.nodes].sort(
     (a, b) => +b.lastEditedAt - +a.lastEditedAt
   )[0]
@@ -98,8 +120,13 @@ function initialTarget(view: BoardView | null): Target {
 
 // ---------- Store ----------
 
-export function createEditorStore(initialView: BoardView | null) {
-  const target = initialTarget(initialView)
+const AI_ENABLED_KEY = "engram:ai-enabled"
+
+export function createEditorStore(
+  initialView: BoardView | null,
+  initialNodeId?: string | null
+) {
+  const target = initialTarget(initialView, initialNodeId)
   const initial: EditorState = {
     screen: "editor",
     boardId: initialView?.board.id ?? null,
@@ -110,6 +137,7 @@ export function createEditorStore(initialView: BoardView | null) {
     draft: savedTextOf({ view: initialView, target }),
     note: "",
     busy: false,
+    aiEnabled: true,
   }
 
   return createStore<EditorStore>()((set, get) => {
@@ -137,6 +165,57 @@ export function createEditorStore(initialView: BoardView | null) {
       const result = await actions.getBoard({ boardId })
       if (result.ok) set({ view: result.data })
       else fail(result.error.message)
+    }
+
+    // ---- AI titles (SPEC.md D20) ----
+    // One request per node at a time. A save during a request queues one re-run, and the
+    // server only applies a title written for the node's latest version.
+    const titling = new Map<string, { rerun: boolean }>()
+
+    function requestTitle(nodeId: string) {
+      if (!get().aiEnabled) return
+      const running = titling.get(nodeId)
+      if (running) {
+        running.rerun = true
+        return
+      }
+      const entry = { rerun: false }
+      titling.set(nodeId, entry)
+      void aiActions
+        .titleNode({ nodeId })
+        .then((result) => {
+          if (!result.ok) {
+            // One toast at a time; capture keeps working without titles.
+            toast.error(result.error.message, { id: "ai-title-error" })
+            return
+          }
+          if (result.data.status === "applied") {
+            patchNode(nodeId, { title: result.data.title, titleSource: "ai" })
+          }
+        })
+        .catch(() =>
+          toast.error("Couldn't reach the server for an AI title.", {
+            id: "ai-title-error",
+          })
+        )
+        .finally(() => {
+          titling.delete(nodeId)
+          if (entry.rerun) requestTitle(nodeId)
+        })
+    }
+
+    /** Update one node in the loaded board without refetching it. */
+    function patchNode(nodeId: string, patch: Partial<NodeView>) {
+      const view = get().view
+      if (!view?.nodes.some((n) => n.id === nodeId)) return
+      set({
+        view: {
+          ...view,
+          nodes: view.nodes.map((n) =>
+            n.id === nodeId ? { ...n, ...patch } : n
+          ),
+        },
+      })
     }
 
     /** Mirror unsaved edits to localStorage; drop the entry once nothing is unsaved. */
@@ -188,6 +267,7 @@ export function createEditorStore(initialView: BoardView | null) {
         if (!result.ok) return fail(result.error.message)
         clearLocalDraft(state.boardId, state.target)
         await refresh(state.boardId!)
+        if (result.data.changed) requestTitle(state.target.nodeId)
         return state.target.nodeId
       }
 
@@ -203,6 +283,7 @@ export function createEditorStore(initialView: BoardView | null) {
         set({ boardId, savedTitle: result.data.board.title })
         window.history.replaceState(null, "", `/b/${boardId}`)
         await refresh(boardId)
+        if (result.data.firstNodeId) requestTitle(result.data.firstNodeId)
         return result.data.firstNodeId
       }
 
@@ -214,6 +295,7 @@ export function createEditorStore(initialView: BoardView | null) {
       if (!result.ok) return fail(result.error.message)
       clearLocalDraft(state.boardId, state.target)
       await refresh(state.boardId)
+      requestTitle(result.data.nodeId)
       return result.data.nodeId
     }
 
@@ -284,6 +366,7 @@ export function createEditorStore(initialView: BoardView | null) {
           if (!result.ok) return void fail(result.error.message)
           clearLocalDraft(state.boardId, original)
           await refresh(state.boardId)
+          requestTitle(result.data.nodeId)
           open({ kind: "node", nodeId: result.data.nodeId })
         }),
 
@@ -307,6 +390,8 @@ export function createEditorStore(initialView: BoardView | null) {
           open({ kind: "new", parentId: savedTo })
         }),
 
+      leaveNode: () => serial(async () => (await commit(true)) !== false),
+
       showGraph: () =>
         serial(async () => {
           if ((await commit(true)) === false) return
@@ -318,6 +403,24 @@ export function createEditorStore(initialView: BoardView | null) {
       openFromGraph: async (nodeId) => {
         await get().goTo({ kind: "node", nodeId })
         set({ screen: "editor" })
+      },
+
+      setAiEnabled: (aiEnabled) => {
+        set({ aiEnabled })
+        try {
+          window.localStorage.setItem(AI_ENABLED_KEY, aiEnabled ? "1" : "0")
+        } catch {
+          // Storage blocked: the toggle still works for this session.
+        }
+      },
+
+      restoreAiEnabled: () => {
+        try {
+          const saved = window.localStorage.getItem(AI_ENABLED_KEY)
+          if (saved !== null) set({ aiEnabled: saved === "1" })
+        } catch {
+          // ignore
+        }
       },
 
       setType: (type) =>

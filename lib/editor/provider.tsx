@@ -16,12 +16,14 @@ const EditorStoreContext = createContext<EditorStoreApi | null>(null)
 /** One store per open board (Zustand's Next.js pattern: no global store). */
 export function EditorStoreProvider({
   initialView,
+  initialNodeId,
   children,
 }: {
   initialView: BoardView | null
+  initialNodeId?: string | null
   children: ReactNode
 }) {
-  const [store] = useState(() => createEditorStore(initialView))
+  const [store] = useState(() => createEditorStore(initialView, initialNodeId))
   return (
     <EditorStoreContext.Provider value={store}>
       {children}

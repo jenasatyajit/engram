@@ -10,12 +10,13 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { nodeLabel } from "@/lib/board/labels"
 import { useEditor } from "@/lib/editor/provider"
-import { anchorNodeId, nodeById } from "@/lib/editor/store"
+import { anchorNodeId, newBranchTitle, nodeById } from "@/lib/editor/store"
 
-import { snippet } from "./snippet"
+import { AiMark } from "./ai-mark"
 
-/** Path from the root to the current node. Click any step to go back up. */
+/** Path from the root to the current node, shown in the header. Click any step to go back up. */
 export function NodeBreadcrumb() {
   const view = useEditor((s) => s.view)
   const target = useEditor((s) => s.target)
@@ -23,14 +24,19 @@ export function NodeBreadcrumb() {
   const busy = useEditor((s) => s.busy)
 
   // Walk up from the current node (or the parent of a new branch) to the root.
-  const path: { id: string; label: string }[] = []
+  const path: { id: string; label: string; full: string; ai: boolean }[] = []
   let cursor = anchorNodeId(target)
   const seen = new Set<string>()
   while (cursor && !seen.has(cursor)) {
     seen.add(cursor)
     const node = nodeById(view, cursor)
     if (!node) break
-    path.unshift({ id: node.id, label: snippet(node.text, 28) })
+    path.unshift({
+      id: node.id,
+      label: nodeLabel(node, 28),
+      full: nodeLabel(node, 200),
+      ai: node.titleSource === "ai",
+    })
     cursor = node.parentId
   }
 
@@ -42,8 +48,8 @@ export function NodeBreadcrumb() {
   const currentId = target.kind === "node" ? target.nodeId : null
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList className="text-[15px]">
+    <Breadcrumb className="min-w-0">
+      <BreadcrumbList className="flex-nowrap text-[15px]">
         {shown.map((step, i) => (
           <Fragment key={step.id}>
             {i > 0 && <BreadcrumbSeparator />}
@@ -55,19 +61,25 @@ export function NodeBreadcrumb() {
                 <BreadcrumbSeparator />
               </>
             )}
-            <BreadcrumbItem>
+            <BreadcrumbItem className="min-w-0">
               {step.id === currentId ? (
-                <BreadcrumbPage className="max-w-[16rem] truncate">
-                  {step.label}
+                <BreadcrumbPage
+                  className="flex min-w-0 items-center gap-1"
+                  title={step.full}
+                >
+                  <span className="max-w-[14rem] truncate">{step.label}</span>
+                  {step.ai && <AiMark />}
                 </BreadcrumbPage>
               ) : (
                 <button
                   type="button"
                   disabled={busy}
+                  title={step.full}
                   onClick={() => goTo({ kind: "node", nodeId: step.id })}
-                  className="max-w-[16rem] truncate transition-colors hover:text-foreground disabled:opacity-60"
+                  className="flex min-w-0 items-center gap-1 transition-colors hover:text-foreground disabled:opacity-60"
                 >
-                  {step.label}
+                  <span className="max-w-[12rem] truncate">{step.label}</span>
+                  {step.ai && <AiMark />}
                 </button>
               )}
             </BreadcrumbItem>
@@ -76,8 +88,13 @@ export function NodeBreadcrumb() {
         {target.kind === "new" && (
           <>
             <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="italic">New branch</BreadcrumbPage>
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage
+                className="max-w-[14rem] truncate whitespace-nowrap italic"
+                title={newBranchTitle(view, target) ?? "New branch"}
+              >
+                {newBranchTitle(view, target) ?? "New branch"}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           </>
         )}
