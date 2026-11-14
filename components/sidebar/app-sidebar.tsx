@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
+  Logout01Icon,
   ArrowRight01Icon,
   Delete02Icon,
   MoreHorizontalIcon,
@@ -15,6 +16,7 @@ import {
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 
+import { logout } from "@/app/actions/auth"
 import * as actions from "@/app/actions/boards"
 import {
   Collapsible,
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -247,6 +250,18 @@ function SidebarBody() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="px-2 pb-3">
+        <form action={logout}>
+          <SidebarMenuButton
+            type="submit"
+            className="text-sidebar-foreground/70"
+          >
+            <HugeiconsIcon icon={Logout01Icon} strokeWidth={2} />
+            <span>Log out</span>
+          </SidebarMenuButton>
+        </form>
+      </SidebarFooter>
     </>
   )
 }

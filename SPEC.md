@@ -42,6 +42,7 @@ Success means: the owner can open a finished board and see not just what they co
 - Suggestions from the AI, with accept / edit / dismiss
 - Web search for Critic mode
 - Export and import of a board
+- Login with a username and password (single seeded user; D23)
 
 ### Out of scope (for now)
 - Multiple users, accounts, collaboration
@@ -166,7 +167,7 @@ Architecture rules:
 - Version history is append-only. Edits add versions; nothing is overwritten.
 - Deleting a node or connection marks it deleted; it can be restored and still appears in timeline replay.
 - Every piece of AI-created content records that it came from the AI.
-- If deployed: protect the app with a single shared password so strangers cannot read the data or spend AI credits. Not needed for local-only use.
+- Access is protected by login (D23): a username and password checked against the `users` table, server-side sessions in a 30-day sliding `sessions` table, an HttpOnly cookie, and a login attempt limit. Every page and server action verifies the session. Boards are not owned by users yet (single user); ownership comes with multi-user support.
 
 ## 10. Build order
 
@@ -210,17 +211,19 @@ Each milestone must be usable and reviewed by the owner before starting the next
 | D14 | Force-directed graph (`react-force-graph-2d`) with a Free layout and a Tree layout. Revised 2026-11-14 by the owner; previously "tree layout with cross-links, via React Flow" | Owner wants an Obsidian-style interactive graph; Tree layout keeps the branch structure readable; canvas easily handles boards of a few hundred nodes |
 | D15 | Append-only versions and soft deletes | Enables replay and protects history |
 | D16 | Cost controls (debounce, caching, daily cap) are required | Free credits are small |
-| D17 | Local-only needs no login; deployed needs a shared password | Protects private data and AI credits |
+| D17 | Superseded by D23 (was: local-only needs no login; deployed needs a shared password) | Protects private data and AI credits |
 | D18 | Share view is deferred until after version 1 | Capture and AI value come first |
 | D19 | Build in the order of section 10, starting with no AI | If the owner does not enjoy thinking in the plain tool, AI will not fix that |
 | D20 | Node titles are written by AI only (no manual title for now), from the node body, via OpenRouter `inclusionai/ling-3.1-flash`. New branches get the placeholder `B#: <parent title>` until text is saved. Titles are applied automatically (no accept step), marked as AI, and have no history. Added 2026-11-14 by the owner | Fast way to recognise nodes; a title is a label, not the owner's content, so the accept step (principle 3) is waived for titles only. Built ahead of milestone 3 by the owner's choice; the AI toggle still turns it off |
 | D21 | OpenRouter is added as a second AI provider for small generation jobs; Sarvam `sarvam-105b` stays the model for the main AI features (D9) | Cheap, fast model for short outputs; all calls still go through the one AI module |
 | D22 | Decision models (OpenRouter Decisions API) are planned for gating, type labels, background yes/no checks and Critic stance labels, but not used yet; only the normal LLM is used for titles | They return probabilities, not text, so they cannot write titles; they are fast and cheap for typed decisions later |
 
+| D23 | Login with username and password replaces the shared password (D17). One user, created by a seed script (`pnpm db:seed-user`, credentials from `SEED_USERNAME` and `SEED_PASSWORD` in env, never committed). Passwords hashed with scrypt; sessions stored server-side (SHA-256 of the cookie token), 30 days sliding; 5 failed logins per 15 minutes per IP are blocked. No ownership column on boards yet; multi-user is planned later. Added by the owner | Protects private data and AI credits once deployed; the user table is the base for multi-user later without building it now |
+
 ## 13. Open items
 
 - App name (choose from candidates).
-- Deployment: planned for Vercel, not yet scheduled. When deployed, add the shared password (D17).
+- Deployment: planned for Vercel, not yet scheduled. Login (D23) is already in place; set `SEED_*` locally and run the seed script once.
 - Exact daily AI call cap.
 - Final list of node type labels (current list is a starting point).
 

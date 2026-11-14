@@ -1,5 +1,6 @@
 import type { z } from "zod"
 
+import { requireUser } from "@/lib/auth/current-user"
 import { AiError, type AiErrorCode } from "@/lib/ai/errors"
 import { BoardError, type BoardErrorCode } from "@/lib/board/repo"
 
@@ -10,7 +11,12 @@ import { BoardError, type BoardErrorCode } from "@/lib/board/repo"
  */
 
 export type ActionError = {
-  code: "INVALID_INPUT" | BoardErrorCode | AiErrorCode | "SERVER_ERROR"
+  code:
+    | "INVALID_INPUT"
+    | "UNAUTHORIZED"
+    | BoardErrorCode
+    | AiErrorCode
+    | "SERVER_ERROR"
   message: string
 }
 export type ActionResult<T> =
@@ -22,6 +28,12 @@ export async function runAction<S extends z.ZodType, T>(
   input: unknown,
   fn: (parsed: z.infer<S>) => Promise<T>
 ): Promise<ActionResult<T>> {
+  if (!(await requireUser())) {
+    return {
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Please log in again." },
+    }
+  }
   const parsed = schema.safeParse(input)
   if (!parsed.success) {
     return {

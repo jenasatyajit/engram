@@ -1,8 +1,9 @@
 import { cookies } from "next/headers"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { z } from "zod"
 
 import { BoardEditor } from "@/components/editor/board-editor"
+import { getCurrentUser } from "@/lib/auth/current-user"
 import { BoardError, getBoard } from "@/lib/board/repo"
 import { db } from "@/lib/db/client"
 
@@ -16,6 +17,7 @@ export default async function BoardPage({
   params: Promise<{ boardId: string }>
   searchParams: Promise<{ node?: string | string[] }>
 }) {
+  if (!(await getCurrentUser())) redirect("/login")
   const { boardId } = await params
   if (!z.uuid().safeParse(boardId).success) notFound()
 

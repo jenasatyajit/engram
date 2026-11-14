@@ -188,6 +188,44 @@ export const aiUsage = sqliteTable("ai_usage", {
   calls: integer("calls").notNull().default(0),
 })
 
+/**
+ * Login (SPEC.md D23). One seeded user for now; boards are not owned by users yet.
+ * password_hash is "salt:hash" (scrypt), never the password itself.
+ */
+export const users = sqliteTable("users", {
+  id: id(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: createdAt(),
+})
+
+/** Server-side sessions. `id` is the SHA-256 of the cookie token, so a database leak yields no usable cookies. */
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    /** Last time the expiry was pushed forward (sliding session). */
+    refreshedAt: integer("refreshed_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)]
+)
+
+/** Failed login attempts per client key (IP) in the current window, for rate limiting. */
+export const loginAttempts = sqliteTable("login_attempts", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull().default(0),
+  windowStart: integer("window_start", { mode: "timestamp_ms" }).notNull(),
+})
+
+export type User = typeof users.$inferSelect
+export type Session = typeof sessions.$inferSelect
 export type Board = typeof boards.$inferSelect
 export type Node = typeof nodes.$inferSelect
 export type NodeVersion = typeof nodeVersions.$inferSelect
