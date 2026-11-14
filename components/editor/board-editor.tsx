@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { AgentPanel } from "@/components/agent-panel"
-import { BoardHeader, type Mode } from "@/components/board-header"
+import { BoardHeader } from "@/components/board-header"
+import { CriticPanel } from "@/components/critic/critic-panel"
 import { GraphScreen } from "@/components/graph/graph-screen"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
@@ -12,6 +13,7 @@ import { useIdle } from "@/hooks/use-idle"
 import { LIMITS } from "@/lib/board/inputs"
 import type { BoardView } from "@/lib/board/repo"
 import { EditorStoreProvider, useEditor } from "@/lib/editor/provider"
+import type { Target } from "@/lib/editor/store"
 
 import { BranchChips } from "./branch-chips"
 import { ChangeBar } from "./change-bar"
@@ -58,16 +60,20 @@ export function BoardEditor({
 }
 
 function EditorScreen() {
-  const [mode, setMode] = useState<Mode>("brainstorm")
+  const mode = useEditor((s) => s.mode)
+  const setMode = useEditor((s) => s.setMode)
   const aiEnabled = useEditor((s) => s.aiEnabled)
   const setAiEnabled = useEditor((s) => s.setAiEnabled)
-  const restoreAiEnabled = useEditor((s) => s.restoreAiEnabled)
+  const restorePreferences = useEditor((s) => s.restorePreferences)
+  const findingsWaiting = useEditor(
+    (s) => s.mode === "critic" && s.aiEnabled && s.critic.findings.length > 0
+  )
   const { isIdle, ping } = useIdle(SLEEP_AFTER_MS)
 
-  // The saved AI toggle lives in localStorage, which only exists in the browser.
+  // The saved AI toggle and mode live in localStorage, which only exists in the browser.
   useEffect(() => {
-    restoreAiEnabled()
-  }, [restoreAiEnabled])
+    restorePreferences()
+  }, [restorePreferences])
   const screen = useEditor((s) => s.screen)
   const showGraph = useEditor((s) => s.showGraph)
   const showEditor = useEditor((s) => s.showEditor)
@@ -86,10 +92,14 @@ function EditorScreen() {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="sticky top-12 hidden w-[320px] shrink-0 self-start lg:block"
         >
-          <AgentPanel
-            messages={AGENT_MESSAGES}
-            mood={isIdle ? "sleeping" : "idle"}
-          />
+          {mode === "critic" ? (
+            <CriticPanel sleeping={isIdle} />
+          ) : (
+            <AgentPanel
+              messages={AGENT_MESSAGES}
+              mood={isIdle ? "sleeping" : "idle"}
+            />
+          )}
         </motion.aside>
       )}
     </AnimatePresence>
@@ -109,6 +119,8 @@ function EditorScreen() {
           else showGraph()
         }}
         leading={<NodeBreadcrumb />}
+        // The agent panel is hidden while the sidebar is open: flag waiting findings on its toggle.
+        attention={sidebarOpen && findingsWaiting}
       />
 
       {screen === "graph" ? (
@@ -222,13 +234,19 @@ function BodyField({ onType }: { onType: () => void }) {
         }
       }}
       maxLength={LIMITS.nodeText}
-      placeholder={
-        target.kind === "new" && target.parentId
-          ? "a new branch..."
-          : "flow your words"
-      }
+      placeholder={bodyPlaceholder(target)}
       aria-label="Thought"
       className="mt-[52px] block [field-sizing:content] min-h-[6.8em] w-full max-w-3xl resize-none overflow-hidden bg-transparent font-serif text-[22px] leading-[1.7] text-foreground caret-foreground outline-none placeholder:text-muted-foreground/80"
     />
   )
+}
+
+/** What the empty body invites you to write. */
+function bodyPlaceholder(target: Target) {
+  if (target.kind !== "new") return "flow your words"
+  if (target.type === "evidence") return "why does this hold up?"
+  if (target.type === "objection") return "what's wrong with it?"
+  if (target.type === "defense") return "your comeback..."
+  if (target.type === "verdict") return "where do you land, in your own words?"
+  return target.parentId ? "a new branch..." : "flow your words"
 }

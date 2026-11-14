@@ -1,6 +1,7 @@
 import { nodeLabel } from "@/lib/board/labels"
 import type { BoardView } from "@/lib/board/repo"
-import type { ConnectionKind, NodeType } from "@/lib/db/schema"
+import { stanceOf } from "@/lib/critic/stance"
+import type { ConnectionKind, NodeType, Stance } from "@/lib/db/schema"
 
 /** One dot in the graph. */
 export type GraphNode = {
@@ -22,6 +23,8 @@ export type GraphLink = {
   source: string
   target: string
   kind: ConnectionKind
+  /** Branch links only: the child's stance towards its parent (Critic, SPEC.md 8). */
+  stance?: Stance
 }
 
 export type GraphData = { nodes: GraphNode[]; links: GraphLink[] }
@@ -48,6 +51,7 @@ export function toGraphData(view: BoardView | null): GraphData {
     return depth
   }
 
+  const typeOf = new Map(view.nodes.map((n) => [n.id, n.type]))
   const degree = new Map<string, number>()
   for (const c of view.connections) {
     degree.set(c.fromNodeId, (degree.get(c.fromNodeId) ?? 0) + 1)
@@ -64,12 +68,17 @@ export function toGraphData(view: BoardView | null): GraphData {
       degree: degree.get(n.id) ?? 0,
       depth: depthOf(n.id),
     })),
-    links: view.connections.map((c) => ({
-      id: c.id,
-      source: c.fromNodeId,
-      target: c.toNodeId,
-      kind: c.kind,
-    })),
+    links: view.connections.map((c) => {
+      const stance =
+        c.kind === "child" ? stanceOf(typeOf.get(c.toNodeId) ?? null) : null
+      return {
+        id: c.id,
+        source: c.fromNodeId,
+        target: c.toNodeId,
+        kind: c.kind,
+        ...(stance ? { stance } : {}),
+      }
+    }),
   }
 }
 

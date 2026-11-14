@@ -4,6 +4,7 @@ import { useId, useMemo } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 
 import { buildPoses, type MascotMood } from "./poses"
+import { ThinkingDots } from "./thinking-dots"
 import { Zzz } from "./zzz"
 
 const SKIN = "#fcc091"
@@ -33,7 +34,13 @@ export function Mascot({ mood = "idle", className }: MascotProps) {
       viewBox="190 285 830 655"
       overflow="visible"
       role="img"
-      aria-label={mood === "sleeping" ? "Mascot, sleeping" : "Mascot"}
+      aria-label={
+        mood === "sleeping"
+          ? "Mascot, sleeping"
+          : mood === "thinking"
+            ? "Mascot, thinking"
+            : "Mascot"
+      }
       className={className}
       initial={false}
       animate={mood}
@@ -143,6 +150,7 @@ export function Mascot({ mood = "idle", className }: MascotProps) {
 
       <AnimatePresence>
         {mood === "sleeping" && <Zzz key="zzz" slow={slow} />}
+        {mood === "thinking" && <ThinkingDots key="dots" slow={slow} />}
       </AnimatePresence>
     </motion.svg>
   )

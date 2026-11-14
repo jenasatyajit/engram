@@ -188,6 +188,103 @@ export const aiUsage = sqliteTable("ai_usage", {
   calls: integer("calls").notNull().default(0),
 })
 
+// ---------- Critic reviews (SPEC.md 6.2, 7.4, D24) ----------
+
+export const FINDING_KINDS = [
+  "duplicate",
+  "contradiction",
+  "new_argument",
+  "weak_support",
+  "hint",
+] as const
+export type FindingKind = (typeof FINDING_KINDS)[number]
+
+export const STANCES = ["for", "against"] as const
+export type Stance = (typeof STANCES)[number]
+
+/** superseded = replaced by a newer review before the owner acted on it. */
+export const FINDING_STATUSES = [
+  "pending",
+  "accepted",
+  "dismissed",
+  "superseded",
+] as const
+export type FindingStatus = (typeof FINDING_STATUSES)[number]
+
+export const REVIEW_STATUSES = ["ok", "failed"] as const
+
+/** A web source the server attached to an AI argument (never written by the model). */
+export type FindingSource = {
+  url: string
+  title: string
+  publishedAt: string | null
+}
+
+/** The ready-made argument in a `new_argument` finding. */
+export type ArgumentProposal = {
+  parentNodeId: string
+  stance: Stance
+  title: string
+  text: string
+  /** Empty = from the model's own knowledge ("AI knowledge, no source"). */
+  sources: FindingSource[]
+}
+
+/** One AI review run: used for the "nothing changed" cache and for logging. */
+export const aiReviews = sqliteTable(
+  "ai_reviews",
+  {
+    id: id(),
+    boardId: text("board_id")
+      .notNull()
+      .references(() => boards.id),
+    /** Hash of the board content the review saw (see lib/critic/context.ts). */
+    contentHash: text("content_hash").notNull(),
+    focusNodeId: text("focus_node_id"),
+    status: text("status", { enum: REVIEW_STATUSES }).notNull(),
+    errorCode: text("error_code"),
+    modelCalls: integer("model_calls").notNull().default(0),
+    searches: integer("searches").notNull().default(0),
+    findingCount: integer("finding_count").notNull().default(0),
+    durationMs: integer("duration_ms").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ai_reviews_board_created_idx").on(t.boardId, t.createdAt)]
+)
+
+/** A finding from a review, shown in the mascot panel until the owner acts on it. */
+export const aiFindings = sqliteTable(
+  "ai_findings",
+  {
+    id: id(),
+    boardId: text("board_id")
+      .notNull()
+      .references(() => boards.id),
+    reviewId: text("review_id")
+      .notNull()
+      .references(() => aiReviews.id),
+    kind: text("kind", { enum: FINDING_KINDS }).notNull(),
+    /** What the mascot says (AI-written, shown as AI). */
+    message: text("message").notNull(),
+    /** Node ids the finding is about. */
+    nodeIds: text("node_ids", { mode: "json" }).$type<string[]>().notNull(),
+    argument: text("argument", { mode: "json" }).$type<ArgumentProposal>(),
+    /** Stable identity across reviews, so a dismissed finding is not raised again. */
+    fingerprint: text("fingerprint").notNull(),
+    status: text("status", { enum: FINDING_STATUSES })
+      .notNull()
+      .default("pending"),
+    resultNodeId: text("result_node_id"),
+    resultConnectionId: text("result_connection_id"),
+    createdAt: createdAt(),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("ai_findings_board_status_idx").on(t.boardId, t.status),
+    index("ai_findings_board_fingerprint_idx").on(t.boardId, t.fingerprint),
+  ]
+)
+
 /**
  * Login (SPEC.md D23). One seeded user for now; boards are not owned by users yet.
  * password_hash is "salt:hash" (scrypt), never the password itself.
@@ -231,3 +328,5 @@ export type Node = typeof nodes.$inferSelect
 export type NodeVersion = typeof nodeVersions.$inferSelect
 export type Connection = typeof connections.$inferSelect
 export type DeletionEvent = typeof deletionEvents.$inferSelect
+export type AiReview = typeof aiReviews.$inferSelect
+export type AiFinding = typeof aiFindings.$inferSelect

@@ -9,6 +9,7 @@ import {
   Tag01Icon,
 } from "@hugeicons/core-free-icons"
 
+import { argumentRoleLabel, StanceDot } from "@/components/critic/stance"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -45,9 +46,18 @@ export function NodeMenu() {
 
   return (
     <div className="flex items-center gap-2">
+      {node.createdBy === "ai" && (
+        <Badge
+          variant="outline"
+          title="This thought was written by the AI and added by you"
+        >
+          Written by AI
+        </Badge>
+      )}
       {node.type && (
-        <Badge variant="secondary" className="capitalize">
-          {node.type}
+        <Badge variant="secondary" className="gap-1.5 capitalize">
+          <StanceDot type={node.type} />
+          {argumentRoleLabel(node.type) ?? node.type}
         </Badge>
       )}
       {node.versionCount > 1 && (

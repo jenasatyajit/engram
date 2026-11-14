@@ -44,11 +44,12 @@ export const SET_TITLE_TOOL = {
 
 /** Tidy what the model wrote: quotes, "Title:" prefixes, trailing punctuation, extra spaces. */
 export function cleanTitle(raw: string) {
-  return raw
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^title\s*:\s*/i, "")
-    .replace(/^["'`“”‘’«»*_#\s]+|["'`“”‘’«»*_\s]+$/g, "")
+  const unquote = (s: string) =>
+    s.replace(/^["'`“”‘’«»*_#\s]+|["'`“”‘’«»*_\s]+$/g, "")
+  // Quotes can sit outside or inside the prefix ("Title: x" or Title: "x"), so unquote on both sides of it.
+  return unquote(
+    unquote(raw.replace(/\s+/g, " ").trim()).replace(/^title\s*:\s*/i, "")
+  )
     .replace(/[.。,;:!?…]+$/u, "")
     .trim()
 }

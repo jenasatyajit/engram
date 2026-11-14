@@ -43,6 +43,8 @@ type Palette = {
   dimLabel: string
   accent: string
   link: Record<GraphLink["kind"], string>
+  /** Branch lines coloured by the child's Critic stance. */
+  stance: Record<NonNullable<GraphLink["stance"]>, string>
   linkDim: string
 }
 
@@ -53,6 +55,8 @@ function readPalette(): Palette {
     css.getPropertyValue(name).trim() || fallback
   const fg = v("--foreground", "oklch(0.985 0 0)")
   const accent = v("--graph-accent", "oklch(0.86 0.19 125)")
+  const stanceFor = v("--stance-for", "oklch(0.74 0.14 155)")
+  const stanceAgainst = v("--stance-against", "oklch(0.68 0.19 25)")
   const withAlpha = (color: string, alpha: number) =>
     color.startsWith("oklch(") ? color.replace(/\)$/, ` / ${alpha})`) : color
   return {
@@ -68,6 +72,10 @@ function readPalette(): Palette {
       "depends-on": withAlpha(fg, 0.32),
       supports: "oklch(0.74 0.14 155 / 0.75)",
       contradicts: "oklch(0.68 0.19 25 / 0.8)",
+    },
+    stance: {
+      for: withAlpha(stanceFor, 0.7),
+      against: withAlpha(stanceAgainst, 0.75),
     },
     linkDim: withAlpha(fg, 0.05),
   }
@@ -301,7 +309,8 @@ export default function BoardGraph({
             ctx.fill()
           }}
           linkColor={(l) => {
-            if (!active) return palette.link[l.kind]
+            if (!active)
+              return l.stance ? palette.stance[l.stance] : palette.link[l.kind]
             const touches =
               idOf(l.source) === hoverId || idOf(l.target) === hoverId
             return touches ? palette.accent : palette.linkDim

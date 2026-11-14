@@ -11,7 +11,9 @@ const PREFIX = "engram:draft:"
 
 function keyFor(boardId: string | null, target: Target) {
   const slot =
-    target.kind === "node" ? target.nodeId : `new:${target.parentId ?? "root"}`
+    target.kind === "node"
+      ? target.nodeId
+      : `new:${target.parentId ?? "root"}${target.type ? `:${target.type}` : ""}`
   return `${PREFIX}${boardId ?? "unsaved"}:${slot}`
 }
 

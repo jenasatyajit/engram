@@ -27,7 +27,7 @@ Success means: the owner can open a finished board and see not just what they co
 3. **The AI suggests; the owner decides.** The AI never changes the owner's content on its own. Every AI change is a visible proposal that is accepted, edited or dismissed.
 4. **AI-written content is always marked** as AI-written, so the record shows whose thinking is whose.
 5. **The AI challenges, it does not conclude.** It never gives a final verdict on the owner's decisions.
-6. **Facts need sources.** Any factual claim in Critic mode must carry a source link, or be labelled unverified.
+6. **Be honest about where a claim comes from.** In Critic mode, an AI argument backed by a web source shows its source link; an AI argument from the model's own knowledge is labelled "AI knowledge, no source". The owner's own arguments need no source and are never labelled (D24).
 7. **Private by default.** This is a single-user tool for the owner's own thoughts.
 
 ## 4. Scope
@@ -80,14 +80,19 @@ Purpose: grow and edit the graph.
   - Points out missing assumptions and possible duplicates.
 
 ### 6.2 Critic mode
-Purpose: challenge a chosen claim.
+Purpose: build and test the case for and against a thought (revised 2026-11-14, D24).
 
-- The owner selects a node and asks the AI to challenge it.
-- The AI returns a set of arguments. Each argument has a stance (for or against), reasoning, and evidence with source links.
-- The AI also lists the hidden assumptions in the claim and what evidence would change the owner's mind.
-- For each argument the owner chooses: add it to the graph as an objection, write a rebuttal (stored as a defense node), or dismiss it.
-- The AI gives no verdict. The owner writes their own verdict, which becomes a node.
-- Critic mode with AI off is not applicable; the AI toggle must be on to request a challenge.
+- **The claim:** the board title is the main thought; the board's first node is its description or supporting text.
+- **Arguments:** on any node the owner adds **For** and **Against** branches. For becomes an `evidence` node; Against becomes an `objection` node, or a `defense` node when it argues against an objection (a rebuttal). Any node can have many arguments, and arguments can be argued with in turn. The owner's arguments are plain text; no source is needed.
+- **AI review (AI toggle on):** after each leave event (switching node, adding a branch, opening the graph or another board, or renaming the board), the AI reads the **whole board** (every branch from every root, every argument, who wrote it) and the mascot panel shows up to 3 findings:
+  - **Duplicate:** two arguments make the same point.
+  - **Contradiction:** two of the owner's points clash.
+  - **New argument:** a ready-made For or Against argument on a named node, from the model's own knowledge and/or Exa web search (7.5).
+  - **Weak support:** an argument does not really support or attack its parent.
+  - **Hint:** a gap, a hidden assumption, or a question worth answering.
+- **Owner actions:** a new argument can be **added** (it becomes an AI-written evidence/objection/defense node) or dismissed; a duplicate can be linked as `related`, a contradiction linked as `contradicts`, a weak support or hint acknowledged; every finding can be dismissed. Dismissed findings are remembered and not raised again.
+- The AI gives no verdict. The owner writes their own verdict, which becomes a `verdict` node under the claim.
+- **AI off:** the owner can still add For, Against and Verdict nodes by hand; no reviews run.
 
 ### 6.3 The AI toggle
 A single toggle, always visible, that applies to both modes. Off means no AI calls of any kind are made.
@@ -124,10 +129,15 @@ When the AI toggle is on:
 
 Suggestion types: **link**, **conflict**, **stale** (with a proposed rewrite), **gap**, **duplicate**, and **expand** (new ideas).
 
+**First use: Critic reviews (D24).** The Critic review in 6.2 is the first suggestion feature built. It runs only in Critic mode with the AI toggle on, after a leave event, debounced, and is skipped when the board content (hashed) has not changed since the last review. Findings are stored as pending suggestions, each new review replaces the previous pending ones, and dismissed findings are kept and sent to the model so they are not repeated. Brainstorm-mode background suggestions stay in milestone 5.
+
 ### 7.5 Web search in Critic mode
 - Search provider: Exa.
 - Exposed to the model as a tool it can call. The server runs the search and returns results to the model.
-- Every factual claim shown to the owner must include its source link. Claims without a source are labelled "unverified".
+- In a Critic review the model decides whether a search helps; at most 2 searches per review, 5 results each, using Exa highlights. Each search counts against the daily cap (7.6).
+- The model cites search results by id; the server attaches the real URLs, so a link can never be invented. An AI argument with no valid source is labelled "AI knowledge, no source" (principle 6).
+- Search results are untrusted data: they are passed to the model as content, never as instructions.
+- If Exa is not configured or fails, the review continues with the model's own knowledge.
 
 ### 7.6 Cost and safety controls
 Free credits are small, so these are required:
@@ -142,6 +152,8 @@ Free credits are small, so these are required:
 - **Board screen:** the graph in the center; a right panel with chat, the selected node's text, its version history and the suggestions tray; a top bar with mode toggle, AI toggle, timeline control and export.
 - **Graph:** an Obsidian-style force-directed graph of one board, opened from the top bar and replacing the editor. Two layouts with a toggle: **Free** (force cloud) and **Tree** (same physics, with branches arranged in levels so the structure is easy to read). Nodes can be dragged; hovering highlights a node's neighbours; clicking a node opens it in the editor. Positions are not saved: the layout re-settles each time.
 - **Nodes show:** type label (if any), version indicator, AI-authored marker, and a suggestion dot.
+- **Critic stance colours:** a branch line in the graph, and the dot on a branch chip, is green for For (`evidence`) and red for Against (`objection`, `defense`). There is no separate supports/contradicts link for an argument and its parent; the branch line carries the stance.
+- **Mascot panel in Critic mode:** shows the AI review findings as cards with their actions, a thinking state while reviewing, and errors with a retry. When the sidebar hides the panel, a dot on the sidebar toggle shows that findings are waiting.
 - **Ghost items:** AI proposals appear visually distinct (faded or dashed) until accepted.
 - **Timeline:** a control that shows the board as it was at any earlier moment.
 - Use the existing shadcn and Tailwind setup for all interface components.
@@ -176,7 +188,7 @@ Each milestone must be usable and reviewed by the owner before starting the next
 1. **Foundation, no AI:** boards, nodes, branching, revising with version history, soft delete, graph view, plain capture chat box, export/import.
 2. **Replay:** timeline control showing a board at an earlier moment.
 3. **AI core:** the AI module, structured output with validation, AI toggle, and on-demand "expand this node" in Brainstorm mode.
-4. **Critic mode:** challenge flow with Exa-backed sourced evidence and the accept / rebut / dismiss actions.
+4. **Critic mode:** For/Against arguments, AI review on leave (duplicates, contradictions, new arguments from model knowledge and Exa, weak support, hints) with add / link / dismiss actions, and the owner's verdict (6.2, D24). Built before milestone 3 by the owner's choice; it includes the Sarvam client that milestone 3 reuses.
 5. **Background suggestions:** links, conflicts, stale propagation, gaps, duplicates, with cost controls.
 6. **Later:** read-only share view (conclusion on top, full process beneath), large-board handling, embeddings if needed.
 
@@ -219,6 +231,7 @@ Each milestone must be usable and reviewed by the owner before starting the next
 | D22 | Decision models (OpenRouter Decisions API) are planned for gating, type labels, background yes/no checks and Critic stance labels, but not used yet; only the normal LLM is used for titles | They return probabilities, not text, so they cannot write titles; they are fast and cheap for typed decisions later |
 
 | D23 | Login with username and password replaces the shared password (D17). One user, created by a seed script (`pnpm db:seed-user`, credentials from `SEED_USERNAME` and `SEED_PASSWORD` in env, never committed). Passwords hashed with scrypt; sessions stored server-side (SHA-256 of the cookie token), 30 days sliding; 5 failed logins per 15 minutes per IP are blocked. No ownership column on boards yet; multi-user is planned later. Added by the owner | Protects private data and AI credits once deployed; the user table is the base for multi-user later without building it now |
+| D24 | Critic mode is For/Against arguments on any node plus an AI review after each leave event (Critic mode, AI on): whole-board context, up to 3 findings (duplicate, contradiction, new argument, weak support, hint), model knowledge plus Exa search (max 2 per review, counted in the daily cap). AI arguments from model knowledge are labelled "AI knowledge, no source"; the owner's arguments need no source. Stance is shown by node type and branch-line colour, not an extra link. Replaces the earlier "challenge a chosen claim" flow and relaxes principle 6. Added 2026-11-14 by the owner | The owner wants to build the case themselves with the AI as a running sparring partner; sources are shown when they exist, and honesty about knowledge-only claims replaces a hard source requirement |
 
 ## 13. Open items
 

@@ -4,11 +4,17 @@ import { SparklesIcon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
 /** Marks AI-written content (SPEC.md principle 4). */
-export function AiMark({ className }: { className?: string }) {
+export function AiMark({
+  className,
+  label = "Title written by AI",
+}: {
+  className?: string
+  label?: string
+}) {
   return (
     <span
       className={cn("inline-flex shrink-0 items-center", className)}
-      title="Title written by AI"
+      title={label}
     >
       <HugeiconsIcon
         icon={SparklesIcon}
@@ -16,7 +22,7 @@ export function AiMark({ className }: { className?: string }) {
         className="size-3 opacity-60"
         aria-hidden
       />
-      <span className="sr-only">AI title</span>
+      <span className="sr-only">{label}</span>
     </span>
   )
 }

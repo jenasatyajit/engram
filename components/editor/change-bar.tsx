@@ -5,12 +5,25 @@ import { Input } from "@/components/ui/input"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { LIMITS } from "@/lib/board/inputs"
 import { useEditor } from "@/lib/editor/provider"
+import type { NodeType } from "@/lib/db/schema"
 import { isDirty } from "@/lib/editor/store"
+
+/** What the owner is writing in a new slot. */
+function newSlotLabel(type: NodeType | null) {
+  if (type === "evidence") return "New argument for"
+  if (type === "objection") return "New argument against"
+  if (type === "defense") return "New rebuttal"
+  if (type === "verdict") return "Your verdict"
+  return "New thought"
+}
 
 /** Appears once the text differs from the saved version: Revise, Branch instead, or Discard. */
 export function ChangeBar() {
   const dirty = useEditor(isDirty)
   const isNew = useEditor((s) => s.target.kind === "new")
+  const newType = useEditor((s) =>
+    s.target.kind === "new" ? (s.target.type ?? null) : null
+  )
   const busy = useEditor((s) => s.busy)
   const note = useEditor((s) => s.note)
   const setNote = useEditor((s) => s.setNote)
@@ -28,7 +41,7 @@ export function ChangeBar() {
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-2 text-sm text-muted-foreground">
-          {isNew ? "New thought" : "Edited"}
+          {isNew ? newSlotLabel(newType) : "Edited"}
         </span>
 
         <Button size="sm" onClick={() => revise()} disabled={busy}>

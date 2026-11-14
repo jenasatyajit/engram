@@ -425,8 +425,12 @@ export async function mostRecentlyEditedNodeId(db: Db, boardId: string) {
 
 // ---------- Connections (cross-links) ----------
 
-/** Owner-made cross-link. Returns the existing link if an identical live one exists. */
-export async function connectNodes(db: Db, input: ConnectInput) {
+/** Cross-link between two nodes. Returns the existing link if an identical live one exists. */
+export async function connectNodes(
+  db: Db,
+  input: ConnectInput,
+  createdBy: "owner" | "ai" = "owner"
+) {
   if (input.fromNodeId === input.toNodeId) {
     throw new BoardError("INVALID", "A node cannot be linked to itself")
   }
@@ -467,7 +471,7 @@ export async function connectNodes(db: Db, input: ConnectInput) {
   const [[connection]] = await db.batch([
     db
       .insert(connections)
-      .values({ ...input, createdBy: "owner", createdAt: now })
+      .values({ ...input, createdBy, createdAt: now })
       .returning(),
     db
       .update(boards)
@@ -596,6 +600,67 @@ export async function applyAiTitle(
     )
     .returning({ id: nodes.id })
   return updated.length > 0
+}
+
+// ---------- AI-written arguments (Critic, SPEC.md 6.2, D24) ----------
+
+/**
+ * Add an AI argument the owner accepted: a node marked as AI-written (node, version
+ * and branch link all record "ai"), with its AI title already set, under `parentId`.
+ */
+export async function createAiArgument(
+  db: Db,
+  input: {
+    boardId: string
+    parentId: string
+    type: NodeType
+    title: string
+    text: string
+  }
+) {
+  const parent = await requireLiveNode(db, input.parentId)
+  if (parent.boardId !== input.boardId) {
+    throw new BoardError(
+      "INVALID",
+      "The parent node belongs to a different board"
+    )
+  }
+  const now = new Date()
+  const nodeId = crypto.randomUUID()
+  const versionId = crypto.randomUUID()
+  await db.batch([
+    db.insert(nodes).values({
+      id: nodeId,
+      boardId: input.boardId,
+      type: input.type,
+      createdBy: "ai",
+      title: input.title,
+      titleSource: "ai",
+      // The title was written for this exact version, so no new title is requested.
+      titledVersionId: versionId,
+      createdAt: now,
+    }),
+    db.insert(nodeVersions).values({
+      id: versionId,
+      nodeId,
+      text: input.text,
+      author: "ai",
+      createdAt: now,
+    }),
+    db.insert(connections).values({
+      boardId: input.boardId,
+      fromNodeId: input.parentId,
+      toNodeId: nodeId,
+      kind: "child",
+      createdBy: "ai",
+      createdAt: now,
+    }),
+    db
+      .update(boards)
+      .set({ updatedAt: now })
+      .where(eq(boards.id, input.boardId)),
+  ])
+  return { nodeId }
 }
 
 // ---------- Lookups ----------

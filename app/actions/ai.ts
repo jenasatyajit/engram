@@ -1,5 +1,6 @@
 "use server"
 
+import { fakeAiEnabled, fakeTitle } from "@/lib/ai/fake"
 import { generateTitle } from "@/lib/ai/openrouter"
 import { titleNode as titleNodeWith } from "@/lib/ai/title-node"
 import { dailyCallCap } from "@/lib/ai/usage"
@@ -16,7 +17,7 @@ import { db } from "@/lib/db/client"
 export async function titleNode(input: unknown) {
   return runAction("ai", nodeIdInput, input, (i) =>
     titleNodeWith(db, i.nodeId, {
-      generate: generateTitle,
+      generate: fakeAiEnabled() ? fakeTitle : generateTitle,
       dailyCap: dailyCallCap(),
     })
   )

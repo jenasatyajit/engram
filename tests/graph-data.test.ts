@@ -122,3 +122,31 @@ describe("toGraphData", () => {
     expect(nodeRadius(0)).toBe(4)
   })
 })
+
+describe("critic stance on branch lines", () => {
+  it("colours a branch by its child's stance and leaves cross-links alone", () => {
+    const claim = node("claim", null)
+    const forArg = { ...node("for", "claim"), type: "evidence" as const }
+    const against = { ...node("against", "claim"), type: "objection" as const }
+    const rebut = { ...node("rebut", "against"), type: "defense" as const }
+    const plain = node("plain", "claim")
+    const data = toGraphData(
+      board(
+        [claim, forArg, against, rebut, plain],
+        [
+          link("l1", "claim", "for", "child"),
+          link("l2", "claim", "against", "child"),
+          link("l3", "against", "rebut", "child"),
+          link("l4", "claim", "plain", "child"),
+          link("x", "for", "against", "contradicts"),
+        ]
+      )
+    )
+    const stanceOf = (id: string) => data.links.find((l) => l.id === id)?.stance
+    expect(stanceOf("l1")).toBe("for")
+    expect(stanceOf("l2")).toBe("against")
+    expect(stanceOf("l3")).toBe("against")
+    expect(stanceOf("l4")).toBeUndefined()
+    expect(stanceOf("x")).toBeUndefined()
+  })
+})

@@ -28,6 +28,8 @@ type BoardHeaderProps = {
   onToggleGraph: () => void
   /** Shown next to the sidebar toggle (the node breadcrumb). */
   leading?: React.ReactNode
+  /** Show a dot on the sidebar toggle (AI findings are waiting behind the open sidebar). */
+  attention?: boolean
 }
 
 export function BoardHeader({
@@ -38,6 +40,7 @@ export function BoardHeader({
   graphOpen,
   onToggleGraph,
   leading,
+  attention = false,
 }: BoardHeaderProps) {
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
   const sidebarOpen = isMobile ? openMobile : open
@@ -54,7 +57,7 @@ export function BoardHeader({
                 aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
                 aria-expanded={sidebarOpen}
                 onClick={toggleSidebar}
-                className="size-10 text-foreground"
+                className="relative size-10 text-foreground"
               />
             }
           >
@@ -63,6 +66,14 @@ export function BoardHeader({
               className="size-6"
               strokeWidth={1.5}
             />
+            {attention && (
+              <span
+                data-testid="findings-dot"
+                className="absolute top-1.5 right-1.5 size-2 rounded-full bg-graph-accent ring-2 ring-background"
+              >
+                <span className="sr-only">AI findings waiting</span>
+              </span>
+            )}
           </TooltipTrigger>
           <TooltipContent className="flex items-center gap-2">
             {sidebarOpen ? "Close sidebar" : "Open sidebar"}
