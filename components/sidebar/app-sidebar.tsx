@@ -48,6 +48,7 @@ import { LIMITS } from "@/lib/board/inputs"
 import type { NodeView } from "@/lib/board/repo"
 import type { Board } from "@/lib/db/schema"
 import { useEditor } from "@/lib/editor/provider"
+import { newBoardHref } from "@/lib/editor/new-board"
 import { anchorNodeId } from "@/lib/editor/store"
 
 import { NodeTree } from "./node-tree"
@@ -176,7 +177,8 @@ function SidebarBody() {
         },
       },
     })
-    if (wasCurrent) router.push("/")
+    // The deleted board is gone: open a fresh, empty board in its place.
+    if (wasCurrent) router.push(newBoardHref())
     else refresh()
   }
 
@@ -240,7 +242,10 @@ function SidebarBody() {
 
             <SidebarMenuItem>
               <SidebarMenuButton
-                onClick={() => (currentBoardId ? navigate("/") : showEditor())}
+                // Always a fresh editor, even when this page was the "/" a board was created on.
+                onClick={() =>
+                  currentBoardId ? navigate(newBoardHref()) : showEditor()
+                }
                 className="text-sidebar-foreground/80"
               >
                 <HugeiconsIcon icon={Add01Icon} strokeWidth={2} />

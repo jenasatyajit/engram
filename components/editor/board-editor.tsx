@@ -13,6 +13,7 @@ import { useIdle } from "@/hooks/use-idle"
 import { LIMITS } from "@/lib/board/inputs"
 import type { BoardView } from "@/lib/board/repo"
 import { EditorStoreProvider, useEditor } from "@/lib/editor/provider"
+import { stripNewBoardParam } from "@/lib/editor/new-board"
 import type { Target } from "@/lib/editor/store"
 
 import { BranchChips } from "./branch-chips"
@@ -74,6 +75,11 @@ function EditorScreen() {
   useEffect(() => {
     restorePreferences()
   }, [restorePreferences])
+
+  // A "New board" link carries a one-off token (lib/editor/new-board.ts); keep the address bar clean.
+  useEffect(() => {
+    stripNewBoardParam()
+  }, [])
   const screen = useEditor((s) => s.screen)
   const showGraph = useEditor((s) => s.showGraph)
   const showEditor = useEditor((s) => s.showEditor)
