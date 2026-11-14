@@ -101,6 +101,8 @@ export const nodeVersions = sqliteTable(
     /** Optional "why this changed". */
     note: text("note"),
     author: text("author", { enum: AUTHORS }).notNull(),
+    /** True when saved automatically on leaving the node, not by an explicit Revise. */
+    autoSaved: integer("auto_saved", { mode: "boolean" }).notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [index("node_versions_node_created_idx").on(t.nodeId, t.createdAt)]

@@ -31,7 +31,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", instrumentSans.variable, newsreader.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        instrumentSans.variable,
+        newsreader.variable
+      )}
     >
       <body>
         <ThemeProvider defaultTheme="dark" enableSystem={false}>

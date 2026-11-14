@@ -1,0 +1,1 @@
+ALTER TABLE `node_versions` ADD `auto_saved` integer DEFAULT false NOT NULL;

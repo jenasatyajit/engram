@@ -29,6 +29,13 @@
       "when": 1794652615535,
       "tag": "0003_deletion_event_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794653626442,
+      "tag": "0004_version_auto_saved",
+      "breakpoints": true
     }
   ]
 }
