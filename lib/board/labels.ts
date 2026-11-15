@@ -1,8 +1,8 @@
-import { mentionsToPlain } from "./mentions"
+import { plainText } from "./formatting"
 
 /** First line of a thought, shortened for breadcrumbs, chips and placeholders. */
 export function snippet(text: string, max: number) {
-  const line = mentionsToPlain(text).trim().split("\n")[0] ?? ""
+  const line = plainText(text).trim().split("\n")[0] ?? ""
   if (!line) return "Untitled thought"
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
 }

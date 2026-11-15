@@ -39,6 +39,8 @@ import {
 import { useEditor } from "@/lib/editor/provider"
 import { nodeById, type Target } from "@/lib/editor/store"
 
+import { formatExtensions } from "./format-extension"
+import { FormatToolbar, type FormatSelection } from "./format-toolbar"
 import {
   currentTrigger,
   ExternalChange,
@@ -138,6 +140,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
   const [trigger, setTrigger] = useState<MentionTrigger | null>(null)
   const [active, setActive] = useState(0)
   const triggerRef = useRef<MentionTrigger | null>(null)
+  const [selection, setSelection] = useState<FormatSelection | null>(null)
   const creating = useRef(false)
 
   const currentId = target.kind === "node" ? target.nodeId : null
@@ -230,6 +233,13 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
     [latest, rowsRef, activeRef, pickRef]
   )
 
+  const formatHost = useMemo(
+    () => ({
+      onSelection: (next: FormatSelection | null) => setSelection(next),
+    }),
+    []
+  )
+
   const buildState = useCallback(
     (doc: string, hint: string) =>
       EditorState.create({
@@ -237,6 +247,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
         extensions: [
           history(),
           mentionExtensions(host),
+          formatExtensions(formatHost),
           keymap.of([
             {
               key: "Mod-Shift-Enter",
@@ -276,7 +287,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
           }),
         ],
       }),
-    [host, latest]
+    [host, formatHost, latest]
   )
 
   // Mount once. React StrictMode runs this twice in development, hence the cleanup.
@@ -319,6 +330,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
       )
       triggerRef.current = null
       setTrigger(null)
+      setSelection(null)
     } else if (isNewBoard) {
       return
     }
@@ -348,6 +360,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
         ref={containerRef}
         className="mt-[52px] w-full max-w-3xl font-serif text-[22px] leading-[1.7] text-foreground"
       />
+      {selection && <FormatToolbar viewRef={viewRef} selection={selection} />}
       {trigger && (
         <MentionPicker
           viewRef={viewRef}

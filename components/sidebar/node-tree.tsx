@@ -6,6 +6,7 @@ import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
 
 import { AiMark } from "@/components/editor/ai-mark"
 import { nodeLabel } from "@/lib/board/labels"
+import { plainText } from "@/lib/board/formatting"
 import {
   Collapsible,
   CollapsibleContent,
@@ -94,7 +95,7 @@ function TreeItem({
       render={<button type="button" />}
       isActive={isActive}
       onClick={() => onOpen(node.id)}
-      title={node.text}
+      title={plainText(node.text)}
       className={cn("w-full cursor-pointer", kids.length > 0 && "pr-7")}
     >
       <span className="truncate">{nodeLabel(node, 40)}</span>

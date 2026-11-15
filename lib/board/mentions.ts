@@ -142,14 +142,12 @@ export function mentionOptions(
     (a, b) =>
       Number(b.isChild) - Number(a.isChild) || a.rank - b.rank || a.at - b.at
   )
-  return ranked
-    .slice(0, MAX_OPTIONS)
-    .map((o) => ({
-      id: o.id,
-      label: o.label,
-      type: o.type,
-      isChild: o.isChild,
-    }))
+  return ranked.slice(0, MAX_OPTIONS).map((o) => ({
+    id: o.id,
+    label: o.label,
+    type: o.type,
+    isChild: o.isChild,
+  }))
 }
 
 /** Can "Create branch" be offered for this query? Not for empty text or an exact existing title. */

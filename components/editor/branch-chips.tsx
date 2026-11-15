@@ -12,6 +12,7 @@ import { StanceDot } from "@/components/critic/stance"
 import { Button } from "@/components/ui/button"
 import { Kbd, KbdGroup } from "@/components/ui/kbd"
 import { nodeLabel } from "@/lib/board/labels"
+import { plainText } from "@/lib/board/formatting"
 import { argumentTypeFor } from "@/lib/critic/stance"
 import { useEditor } from "@/lib/editor/provider"
 import { nodeById } from "@/lib/editor/store"
@@ -55,7 +56,7 @@ export function BranchChips() {
           disabled={busy}
           onClick={() => goTo({ kind: "node", nodeId: child.id })}
           className="max-w-[16rem] rounded-full"
-          title={child.text}
+          title={plainText(child.text)}
         >
           <StanceDot type={child.type} />
           <span className="truncate">{nodeLabel(child, 32)}</span>

@@ -61,6 +61,23 @@
 :root {
   --graph-accent: oklch(0.62 0.17 130);
   /* Critic stance colours (SPEC.md 8): For, Against, verdict */
+  /* Text formatting colours (Coda-style palette): text and highlight, light theme */
+  --fmt-text-red: #d92d2d;
+  --fmt-text-orange: #d9690b;
+  --fmt-text-yellow: #a87a00;
+  --fmt-text-green: #178a45;
+  --fmt-text-blue: #1f6fc2;
+  --fmt-text-purple: #7242d6;
+  --fmt-text-pink: #c2358a;
+  --fmt-text-gray: #6b6b6b;
+  --fmt-bg-red: #fbd5d5;
+  --fmt-bg-orange: #fde0c4;
+  --fmt-bg-yellow: #fcefb4;
+  --fmt-bg-green: #cdf0d9;
+  --fmt-bg-blue: #cfe6fb;
+  --fmt-bg-purple: #e3d9fb;
+  --fmt-bg-pink: #f9d3e8;
+  --fmt-bg-gray: #e2e2e2;
   --stance-for: oklch(0.6 0.14 155);
   --stance-against: oklch(0.58 0.19 25);
   --stance-verdict: oklch(0.7 0.14 75);
@@ -101,6 +118,23 @@
 .dark {
   /* Graph highlight colour (Obsidian-style lime) */
   --graph-accent: oklch(0.86 0.19 125);
+  /* Text formatting colours, dark theme */
+  --fmt-text-red: #ff6b6b;
+  --fmt-text-orange: #ff9f55;
+  --fmt-text-yellow: #f2c84b;
+  --fmt-text-green: #4cd37f;
+  --fmt-text-blue: #62b0f0;
+  --fmt-text-purple: #a98af0;
+  --fmt-text-pink: #ee74b4;
+  --fmt-text-gray: #a3a3a3;
+  --fmt-bg-red: #6b1f26;
+  --fmt-bg-orange: #7c3a0f;
+  --fmt-bg-yellow: #7a5a0b;
+  --fmt-bg-green: #14582e;
+  --fmt-bg-blue: #164d6e;
+  --fmt-bg-purple: #45297c;
+  --fmt-bg-pink: #6b2848;
+  --fmt-bg-gray: #4a4a4a;
   --stance-for: oklch(0.74 0.14 155);
   --stance-against: oklch(0.68 0.19 25);
   --stance-verdict: oklch(0.8 0.13 80);

@@ -16,6 +16,7 @@ import { AiMark } from "@/components/editor/ai-mark"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { nodeLabel } from "@/lib/board/labels"
+import { plainText } from "@/lib/board/formatting"
 import type { NodeView } from "@/lib/board/repo"
 import { NO_SOURCE_LABEL } from "@/lib/critic/format"
 import type { FindingView } from "@/lib/critic/repo"
@@ -111,7 +112,7 @@ export function FindingCard({
                 type="button"
                 onClick={() => onOpenNode(parent.id)}
                 className="max-w-[11rem] truncate text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                title={parent.text}
+                title={plainText(parent.text)}
               >
                 on {nodeLabel(parent, 28)}
               </button>
@@ -177,7 +178,7 @@ export function FindingCard({
               variant="outline"
               onClick={() => onOpenNode(n.id)}
               className="max-w-[12rem] rounded-full"
-              title={n.text}
+              title={plainText(n.text)}
             >
               <span className="truncate">{nodeLabel(n, 24)}</span>
             </Button>

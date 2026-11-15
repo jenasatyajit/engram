@@ -238,7 +238,8 @@ export const openrouterChat: ChatFn = async (request) => {
       contentChars: choice.message.content?.length ?? 0,
       reasoningChars: choice.message.reasoning?.length ?? 0,
       toolCalls: choice.message.tool_calls?.map((c) => c.function.name) ?? [],
-      toolArgChars: choice.message.tool_calls?.[0]?.function.arguments.length ?? 0,
+      toolArgChars:
+        choice.message.tool_calls?.[0]?.function.arguments.length ?? 0,
     })
   )
   const reply: ChatReply = {

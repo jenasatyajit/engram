@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { nodeLabel } from "@/lib/board/labels"
-import { mentionsToPlain } from "@/lib/board/mentions"
+import { plainText } from "@/lib/board/formatting"
 import type { BoardView, NodeView } from "@/lib/board/repo"
 import type { FindingKind } from "@/lib/db/schema"
 
@@ -103,7 +103,7 @@ export function buildBoardContext(
       `${h(n.id)} | ${roleOf(n.type, !n.parentId)} | ${author} | parent ${parent} | ${JSON.stringify(neutralise(nodeLabel(n, 60)))}`
     )
     lines.push(
-      `  ${neutralise(clip(mentionsToPlain(n.text, titleOf).trim(), MAX_NODE_CHARS)).replace(/\n/g, "\n  ")}`
+      `  ${neutralise(clip(plainText(n.text, titleOf).trim(), MAX_NODE_CHARS)).replace(/\n/g, "\n  ")}`
     )
   }
 
