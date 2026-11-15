@@ -58,8 +58,9 @@ export type ReviewResult = {
 }
 
 /** Model call budget: up to 2 search rounds, a submit, and one nudge. */
-const MAX_MODEL_CALLS = MAX_SEARCHES + 2
-const MAX_OUTPUT_TOKENS = 4_096
+const MAX_MODEL_CALLS = MAX_SEARCHES + 3
+/** Reasoning tokens count toward max_tokens, so leave generous room. */
+const MAX_OUTPUT_TOKENS = 32_000
 
 type NumberedResult = WebResult & { sourceId: string }
 
@@ -172,6 +173,7 @@ async function runLoop(
     { role: "user", content: criticUserPrompt(context.text) },
   ]
   let searchEnabled = deps.search !== null
+  let truncatedOnce = false
 
   for (let turn = 0; turn < MAX_MODEL_CALLS; turn++) {
     const canSearch = searchEnabled && stats.searches < MAX_SEARCHES
@@ -196,18 +198,39 @@ async function runLoop(
     const submit = reply.toolCalls.find(
       (c) => c.function.name === "submit_review"
     )
-    if (submit) return parseReviewArgs(submit.function.arguments)
-
-    if (reply.toolCalls.length === 0) {
-      // Plain text instead of a tool call: accept a JSON object if there is one, else nudge once.
-      const json = extractJsonObject(reply.content)
-      if (json) return parseReviewArgs(json)
-      if (reply.finishReason === "length") {
+    if (reply.finishReason === "length") {
+      // A half-written tool call can't be repaired safely, so retry once asking for less.
+      console.warn(
+        "[ai:review] reply cut off by max_tokens",
+        JSON.stringify({
+          maxTokens: MAX_OUTPUT_TOKENS,
+          turn,
+          retried: truncatedOnce,
+        })
+      )
+      if (truncatedOnce) {
         throw new AiError(
           "INVALID_RESPONSE",
           "The AI's review was cut off. Try again."
         )
       }
+      truncatedOnce = true
+      messages.push({
+        role: "user",
+        content:
+          "Your last reply was cut off because it was too long. Call submit_review again with at most 2 findings, each argument text at most 3 short sentences, and no extra commentary.",
+      })
+      continue
+    }
+
+    if (submit) {
+      return parseReviewArgs(submit.function.arguments, reply.finishReason)
+    }
+
+    if (reply.toolCalls.length === 0) {
+      // Plain text instead of a tool call: accept a JSON object if there is one, else nudge once.
+      const json = extractJsonObject(reply.content)
+      if (json) return parseReviewArgs(json, reply.finishReason)
       messages.push({ role: "assistant", content: reply.content ?? "" })
       messages.push({
         role: "user",
@@ -321,16 +344,32 @@ async function runToolCall(
   }
 }
 
-function parseReviewArgs(raw: string): ReviewOutput {
+function parseReviewArgs(
+  raw: string,
+  finishReason: string | null
+): ReviewOutput {
   let json: unknown
   try {
     json = JSON.parse(raw)
-  } catch {
+  } catch (error) {
+    console.warn(
+      "[ai:review] malformed JSON from model",
+      JSON.stringify({
+        finishReason,
+        truncated: finishReason === "length",
+        chars: raw.length,
+        parseError: error instanceof Error ? error.message : String(error),
+        tail: raw.slice(-120),
+      })
+    )
     throw new AiError("INVALID_RESPONSE", "The AI returned a malformed review.")
   }
   const parsed = reviewOutputSchema.safeParse(json)
   if (!parsed.success) {
-    console.warn("[ai:review] invalid output", parsed.error.issues.slice(0, 3))
+    console.warn(
+      "[ai:review] invalid output",
+      JSON.stringify({ finishReason, issues: parsed.error.issues.slice(0, 3) })
+    )
     throw new AiError(
       "INVALID_RESPONSE",
       "The AI's review didn't pass validation, so it was discarded."
@@ -359,6 +398,7 @@ export function resolveFindings(
   const nodeIdOf = (handle: string) => {
     const id = context.handleToId.get(handle)
     if (!id) {
+      console.warn("[ai:review] unknown node handle", handle)
       throw new AiError(
         "INVALID_RESPONSE",
         "The AI referred to a thought that doesn't exist, so the review was discarded."

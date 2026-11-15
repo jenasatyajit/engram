@@ -1,5 +1,5 @@
 /*
- * Provider-neutral chat types (OpenAI-compatible shape, which Sarvam v1 uses).
+ * Provider-neutral chat types (OpenAI-compatible shape, which OpenRouter uses).
  * Feature code depends on these, not on a provider, so the model can be swapped
  * (SPEC.md 7.1) and tests can pass a fake.
  */

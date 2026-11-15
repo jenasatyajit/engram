@@ -100,8 +100,7 @@ A single toggle, always visible, that applies to both modes. Off means no AI cal
 ## 7. How the AI works
 
 ### 7.1 Model and service
-- Model: Sarvam `sarvam-105b` (128K token context window), via the v1 chat completions endpoint.
-- Not Sarvam-M (deprecated). Not the v2 endpoint (requires beta access).
+- Model: OpenRouter `deepseek/deepseek-v4.1-flash-1017` (1M context, tools, reasoning), via chat completions. Replaced Sarvam `sarvam-105b` (its pay-as-you-go tier capped output at 4096 tokens, which truncated reviews).
 - **Small generation jobs (node titles):** OpenRouter chat completions with `inclusionai/ling-3.1-flash`. This model has no JSON-schema mode on OpenRouter, so the title is returned through a forced tool call whose arguments are validated (7.2). Reasoning is turned off and the output length is capped. Key in `OPENROUTER_API_KEY` (server-side only).
 - **Decision models (planned, not used yet):** OpenRouter's Decisions API (`/api/alpha/decisions`, e.g. TypeSafe Jev, Perplexity Decider) returns typed probabilities (`noul` yes/no, `choice`, `score`) instead of text. Planned uses: gate whether an edit is worth a new title (skips needless LLM calls), suggest a node's type label, yes/no checks for duplicates, conflicts and stale nodes (7.4), and labelling Critic arguments for/against. Not suitable for writing titles: they cannot generate text, and the Extractions API only copies phrases verbatim.
 - All AI calls happen on the server. The API key is never exposed to the browser.
@@ -169,7 +168,7 @@ Free credits are small, so these are required:
 | Graph rendering | `react-force-graph-2d` (canvas, d3-force physics) with Free and Tree layouts |
 | Client state | Zustand |
 | Validation and shared types | Zod |
-| LLM | Sarvam `sarvam-105b` (server-side only); OpenRouter `inclusionai/ling-3.1-flash` for node titles (D21) |
+| LLM | OpenRouter `deepseek/deepseek-v4.1-flash-1017` for Critic (server-side only); OpenRouter `inclusionai/ling-3.1-flash` for node titles (D21) |
 | Web search | Exa API (server-side only) |
 | Tests | Vitest, focused on versioning and graph logic |
 

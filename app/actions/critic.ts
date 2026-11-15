@@ -3,7 +3,7 @@
 import { exaSearch, isExaConfigured } from "@/lib/ai/exa"
 import { AiError } from "@/lib/ai/errors"
 import { fakeAiEnabled, fakeCriticChat, fakeSearch } from "@/lib/ai/fake"
-import { isSarvamConfigured, sarvamChat } from "@/lib/ai/sarvam"
+import { isOpenRouterConfigured, openrouterChat } from "@/lib/ai/openrouter"
 import { dailyCallCap } from "@/lib/ai/usage"
 import { runAction } from "@/lib/actions/run"
 import { boardIdInput } from "@/lib/board/inputs"
@@ -21,14 +21,14 @@ function reviewDeps(): ReviewDeps {
   const dailyCap = dailyCallCap()
   if (fakeAiEnabled())
     return { chat: fakeCriticChat, search: fakeSearch, dailyCap }
-  if (!isSarvamConfigured()) {
+  if (!isOpenRouterConfigured()) {
     throw new AiError(
       "AI_NOT_CONFIGURED",
-      "Critic reviews need a Sarvam key: add SARVAM_API_KEY to .env.local and restart."
+      "Critic reviews need an OpenRouter key: add OPENROUTER_API_KEY to .env.local and restart."
     )
   }
   return {
-    chat: sarvamChat,
+    chat: openrouterChat,
     search: isExaConfigured() ? exaSearch : null,
     dailyCap,
   }
