@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import { getNodeHistory } from "@/app/actions/boards"
 import { Badge } from "@/components/ui/badge"
+import { mentionsToPlain } from "@/lib/board/mentions"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
@@ -85,7 +86,7 @@ export function HistorySheet({
                   {v.author === "ai" && <Badge variant="outline">AI</Badge>}
                 </div>
                 <p className="font-serif text-[15px] leading-relaxed whitespace-pre-wrap">
-                  {v.text}
+                  {mentionsToPlain(v.text)}
                 </p>
                 {v.note && (
                   <p className="mt-2 text-sm text-muted-foreground italic">

@@ -97,7 +97,15 @@ const ALT = 1,
   SHIFT = 8
 const focus = (selector) =>
   evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`)
-const bodyText = () => evaluate(`document.querySelector('#thought-body').value`)
+// The body is CodeMirror: read its lines (pills show their title), minus the placeholder.
+const bodyText = () =>
+  evaluate(
+    `(()=>{const c=document.querySelector('#thought-body').cloneNode(true);c.querySelectorAll('.cm-placeholder,.cm-widgetBuffer').forEach(e=>e.remove());return [...c.querySelectorAll('.cm-line')].map(l=>l.textContent).join('\\n')})()`
+  )
+const bodyPlaceholder = () =>
+  evaluate(
+    `document.querySelector('#thought-body .cm-placeholder')?.textContent ?? ''`
+  )
 const crumbs = () =>
   evaluate(
     `[...document.querySelectorAll('nav[aria-label=breadcrumb] li')].map(l=>l.textContent.trim()).filter(Boolean)`
@@ -632,8 +640,7 @@ check(
   "Against opens an empty argument slot",
   (await bodyText()) === "" &&
     (await barText()) === null &&
-    (await evaluate(`document.querySelector("#thought-body").placeholder`)) ===
-      "what's wrong with it?"
+    (await bodyPlaceholder()) === "what's wrong with it?"
 )
 await type("Rust takes a long time to learn.")
 check(
@@ -794,6 +801,87 @@ await wait(600)
 check(
   "Brainstorm brings back New branch",
   (await chips()).some((c) => c.startsWith("New branch"))
+)
+
+// 11. `[[` tags in the CodeMirror body (Brainstorm).
+const typeKeys = async (text) => {
+  for (const ch of text) {
+    await send("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: ch,
+      text: ch,
+      unmodifiedText: ch,
+    })
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key: ch })
+  }
+  await wait(300)
+}
+const pressKey = async (name, vk) => {
+  const base = { key: name, code: name, windowsVirtualKeyCode: vk }
+  await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...base })
+  await send("Input.dispatchKeyEvent", { type: "keyUp", ...base })
+  await wait(300)
+}
+const pickerRows = () =>
+  evaluate(
+    `[...document.querySelectorAll("[cmdk-item]")].map(i=>i.textContent.trim())`
+  )
+const pickerOpen = () => evaluate(`!!document.querySelector("[cmdk-root]")`)
+const pills = () =>
+  evaluate(
+    `[...document.querySelectorAll("#thought-body .cm-mention")].map(p=>p.textContent.trim())`
+  )
+
+await focus("#thought-body")
+await typeKeys(" see [[")
+check(
+  "typing [[ closes the brackets",
+  (await bodyText()).endsWith("see [[]]"),
+  await bodyText()
+)
+check("the tag picker opens", await pickerOpen())
+await shot("tags-picker")
+await typeKeys("Zeta idea")
+const rowsNew = await pickerRows()
+check(
+  "an unknown name offers Create branch",
+  rowsNew.length === 1 && rowsNew[0].startsWith("Create branch"),
+  JSON.stringify(rowsNew)
+)
+await pressKey("Enter", 13)
+await wait(2500)
+check(
+  "Enter creates the branch and inserts a pill",
+  (await pills()).join("|") === "Zeta idea" && !(await pickerOpen()),
+  JSON.stringify(await pills())
+)
+check(
+  "the new branch shows in the chips",
+  (await chips()).some((c) => c.includes("Zeta idea")),
+  JSON.stringify(await chips())
+)
+await shot("tags-pill")
+
+await typeKeys(" [[")
+await pressKey("Backspace", 8)
+check(
+  "Backspace in an empty [[]] removes both pairs",
+  !(await bodyText()).includes("[["),
+  await bodyText()
+)
+
+await typeKeys("[[")
+await typeKeys("z")
+check("the picker lists matching thoughts", (await pickerRows()).length > 0)
+await pressKey("Escape", 27)
+check("Escape closes the picker", !(await pickerOpen()))
+
+await evaluate(`document.querySelector("#thought-body .cm-mention").click()`)
+await settle()
+check(
+  "clicking a pill opens that thought",
+  (await crumbs()).some((c) => c.includes("Zeta idea")),
+  JSON.stringify(await crumbs())
 )
 ws.close()
 browser.kill()

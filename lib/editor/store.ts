@@ -6,7 +6,11 @@ import * as actions from "@/app/actions/boards"
 import * as criticActions from "@/app/actions/critic"
 import type { Mode } from "@/components/board-header"
 import type { BoardView, NodeView } from "@/lib/board/repo"
-import { branchPlaceholder, nodeLabel } from "@/lib/board/labels"
+import {
+  branchPlaceholder,
+  MAX_TITLE_LENGTH,
+  nodeLabel,
+} from "@/lib/board/labels"
 import type { FindingView } from "@/lib/critic/repo"
 import { argumentTypeFor } from "@/lib/critic/stance"
 import type { NodeType, Stance } from "@/lib/db/schema"
@@ -75,6 +79,13 @@ type EditorActions = {
   goTo: (target: Target) => Promise<void>
   /** Leave the current node and open an empty branch under it. */
   newBranch: () => Promise<void>
+  /**
+   * From a `[[` tag: create a branch under the current thought named `name`, without leaving
+   * the thought. Returns the new node, or null if it could not be created.
+   */
+  createTaggedBranch: (
+    name: string
+  ) => Promise<{ id: string; title: string } | null>
   /** Critic: leave the current node and open an empty For/Against argument or verdict under it. */
   newArgument: (kind: Stance | "verdict") => Promise<void>
   /** Leave the current node before navigating away (auto-saves edits). False if saving failed. */
@@ -543,6 +554,27 @@ export function createEditorStore(
           if (!savedTo) return
           open({ kind: "new", parentId: savedTo })
           afterLeave(savedTo)
+        }),
+
+      createTaggedBranch: (name) =>
+        serial(async () => {
+          const state = get()
+          const title = name.trim().slice(0, MAX_TITLE_LENGTH)
+          if (state.target.kind !== "node" || !state.boardId || !title)
+            return null
+          const result = await actions.createNode({
+            boardId: state.boardId,
+            text: title,
+            parentId: state.target.nodeId,
+            title,
+          })
+          if (!result.ok) {
+            fail(result.error.message)
+            return null
+          }
+          await refresh(state.boardId)
+          markChanged()
+          return { id: result.data.nodeId, title }
         }),
 
       newArgument: (kind) =>

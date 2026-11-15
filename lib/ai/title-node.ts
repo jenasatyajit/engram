@@ -1,3 +1,4 @@
+import { mentionsToPlain } from "@/lib/board/mentions"
 import { applyAiTitle, latestVersion } from "@/lib/board/repo"
 import type { Db } from "@/lib/db/types"
 
@@ -38,7 +39,7 @@ export async function titleNode(
     )
   }
 
-  const title = await generate(latest.text)
+  const title = await generate(mentionsToPlain(latest.text))
   const applied = await applyAiTitle(db, nodeId, latest.id, title)
   return applied ? { status: "applied", title } : { status: "stale" }
 }

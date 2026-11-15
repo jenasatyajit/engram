@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import dynamic from "next/dynamic"
+import { useEffect } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { AgentPanel } from "@/components/agent-panel"
@@ -14,7 +15,6 @@ import { LIMITS } from "@/lib/board/inputs"
 import type { BoardView } from "@/lib/board/repo"
 import { EditorStoreProvider, useEditor } from "@/lib/editor/provider"
 import { stripNewBoardParam } from "@/lib/editor/new-board"
-import type { Target } from "@/lib/editor/store"
 
 import { BranchChips } from "./branch-chips"
 import { ChangeBar } from "./change-bar"
@@ -185,74 +185,12 @@ function TitleField({ onType }: { onType: () => void }) {
   )
 }
 
+/** The body is CodeMirror (loaded on demand, browser only); see body-editor.tsx. */
+const BodyEditor = dynamic(() => import("./body-editor"), {
+  ssr: false,
+  loading: () => <div className="mt-[52px] min-h-[6.8em] w-full max-w-3xl" />,
+})
+
 function BodyField({ onType }: { onType: () => void }) {
-  const draft = useEditor((s) => s.draft)
-  const target = useEditor((s) => s.target)
-  const setDraft = useEditor((s) => s.setDraft)
-  const restoreLocalDraft = useEditor((s) => s.restoreLocalDraft)
-  const revise = useEditor((s) => s.revise)
-  const branchInstead = useEditor((s) => s.branchInstead)
-  const newBranch = useEditor((s) => s.newBranch)
-  const isNewBoard = useEditor((s) => s.boardId === null)
-  const ref = useRef<HTMLTextAreaElement>(null)
-
-  // Local drafts can only be read in the browser, so load them after mount.
-  useEffect(() => {
-    restoreLocalDraft()
-  }, [restoreLocalDraft])
-
-  // Moving to another node: focus the body with the cursor at the end.
-  const targetKey =
-    target.kind === "node" ? target.nodeId : `new:${target.parentId}`
-  const firstRender = useRef(true)
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      if (isNewBoard) return
-    }
-    const el = ref.current
-    if (!el) return
-    el.focus()
-    el.setSelectionRange(el.value.length, el.value.length)
-  }, [targetKey, isNewBoard])
-
-  return (
-    <textarea
-      id="thought-body"
-      ref={ref}
-      value={draft}
-      onChange={(e) => {
-        setDraft(e.target.value)
-        onType()
-      }}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter") return
-        const mod = e.ctrlKey || e.metaKey
-        if (mod && e.shiftKey) {
-          e.preventDefault()
-          branchInstead()
-        } else if (mod) {
-          e.preventDefault()
-          revise()
-        } else if (e.altKey) {
-          e.preventDefault()
-          newBranch()
-        }
-      }}
-      maxLength={LIMITS.nodeText}
-      placeholder={bodyPlaceholder(target)}
-      aria-label="Thought"
-      className="mt-[52px] block [field-sizing:content] min-h-[6.8em] w-full max-w-3xl resize-none overflow-hidden bg-transparent font-serif text-[22px] leading-[1.7] text-foreground caret-foreground outline-none placeholder:text-muted-foreground/80"
-    />
-  )
-}
-
-/** What the empty body invites you to write. */
-function bodyPlaceholder(target: Target) {
-  if (target.kind !== "new") return "flow your words"
-  if (target.type === "evidence") return "why does this hold up?"
-  if (target.type === "objection") return "what's wrong with it?"
-  if (target.type === "defense") return "your comeback..."
-  if (target.type === "verdict") return "where do you land, in your own words?"
-  return target.parentId ? "a new branch..." : "flow your words"
+  return <BodyEditor onType={onType} />
 }

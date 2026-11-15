@@ -272,7 +272,8 @@ export async function createNode(db: Db, input: CreateNodeInput) {
   }
 
   // A new branch starts as "B<n>: <parent title>" until the AI names it (D20).
-  const title = parentId ? await placeholderTitle(db, parentId) : null
+  const title =
+    input.title ?? (parentId ? await placeholderTitle(db, parentId) : null)
 
   const now = new Date()
   const nodeId = crypto.randomUUID()

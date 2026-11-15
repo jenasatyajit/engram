@@ -56,6 +56,8 @@ export const createNodeInput = z.object({
    */
   parentId: id.nullable().optional(),
   type: z.enum(NODE_TYPES).nullable().optional(),
+  /** Name chosen by the owner (e.g. created from a `[[` tag); omitted = the `B#` placeholder. */
+  title: z.string().trim().min(1).max(80).optional(),
 })
 
 export const reviseNodeInput = z.object({
