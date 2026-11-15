@@ -148,6 +148,17 @@
     @apply font-sans;
   }
 }
+/*
+ * The editor screen is a fixed-height app shell that scrolls inside <main>. Pin the page itself
+ * so it can never show a second, page-level scrollbar (or scroll the header away) on top of it.
+ */
+html:has([data-app-shell]),
+html:has([data-app-shell]) body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Slim custom page scrollbar */
 html {
   scrollbar-width: thin;

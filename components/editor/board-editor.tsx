@@ -51,7 +51,8 @@ export function BoardEditor({
     >
       <SidebarProvider
         defaultOpen={sidebarOpen}
-        className="h-svh min-h-0 overflow-hidden"
+        data-app-shell=""
+        className="h-dvh min-h-0 overflow-clip"
       >
         <AppSidebar />
         <EditorScreen />
@@ -112,7 +113,7 @@ function EditorScreen() {
   )
 
   return (
-    <div className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex h-dvh min-w-0 flex-1 flex-col overflow-clip">
       <BoardHeader
         mode={mode}
         onModeChange={setMode}
@@ -134,7 +135,7 @@ function EditorScreen() {
           <GraphScreen />
         </main>
       ) : (
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="flex min-h-full gap-10 px-8 pt-12 pb-24 md:pl-[88px] lg:pr-10">
             <div className="flex min-w-0 flex-1 flex-col">
               <div className="flex min-h-8 max-w-3xl items-center justify-end gap-4">

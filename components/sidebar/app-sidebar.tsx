@@ -78,7 +78,7 @@ export function AppSidebar() {
           ? { duration: 0.15 }
           : { type: "spring", stiffness: 420, damping: 40 }
       }
-      className="relative h-svh shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground data-[closed=true]:border-r-0"
+      className="relative h-dvh shrink-0 overflow-clip border-r border-sidebar-border bg-sidebar text-sidebar-foreground data-[closed=true]:border-r-0"
       data-closed={!isOpen}
     >
       <motion.div
