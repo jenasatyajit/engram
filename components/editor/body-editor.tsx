@@ -40,6 +40,7 @@ import { useEditor } from "@/lib/editor/provider"
 import { nodeById, type Target } from "@/lib/editor/store"
 
 import { formatExtensions } from "./format-extension"
+import { typewriterScroll } from "./typewriter-scroll"
 import { FormatToolbar, type FormatSelection } from "./format-toolbar"
 import {
   currentTrigger,
@@ -267,6 +268,7 @@ export default function BodyEditor({ onType }: { onType: () => void }) {
             ...historyKeymap,
           ]),
           EditorView.lineWrapping,
+          typewriterScroll(),
           placeholder(hint),
           maxLength(LIMITS.nodeText),
           editorTheme,
